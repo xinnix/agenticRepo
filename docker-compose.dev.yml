@@ -1,0 +1,63 @@
+# Docker Compose for Development
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencode-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: opencode
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: development
+    container_name: opencode-api-dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/opencode
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+    command: pnpm dev:api
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      target: development
+    container_name: opencode-admin-dev
+    environment:
+      VITE_API_URL: http://localhost:3000/trpc
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/admin:/app/apps/admin
+      - ./packages:/app/packages
+    command: pnpm dev:admin
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:

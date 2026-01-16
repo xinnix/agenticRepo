@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Prisma
+infra/database/generated/
+infra/database/prisma/migrations/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite
+.vite/
+
+# Testing
+coverage/
+
+# Misc
+.cache/
+.temp/
+
+# Claude Code hooks
+.claude/logs/
+.claude/backups/

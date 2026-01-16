@@ -1,0 +1,31 @@
+{
+  "name": "opencode-stack",
+  "version": "1.0.0",
+  "description": "Full-stack autonomous scaffold with NestJS + tRPC + Refine",
+  "scripts": {
+    "sync": "./scripts/sync-all.sh",
+    "type-check": "./scripts/type-check.sh",
+    "dev:api": "pnpm -C apps/api dev",
+    "dev:admin": "pnpm -C apps/admin dev",
+    "db:generate": "pnpm -C infra/database prisma generate",
+    "db:migrate": "pnpm -C infra/database prisma migrate dev",
+    "db:studio": "pnpm -C infra/database prisma studio",
+    "build:api": "pnpm -C apps/api build",
+    "build:admin": "pnpm -C apps/admin build",
+    "build:shared": "pnpm -C infra/shared build",
+    "generate:module": "bash scripts/generate-module.sh",
+    "register:permissions": "ts-node scripts/register-permissions.ts"
+  },
+  "keywords": [
+    "nestjs",
+    "trpc",
+    "refine",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.4",
+  "dependencies": {
+    "@nestjs/config": "^4.0.2"
+  }
+}

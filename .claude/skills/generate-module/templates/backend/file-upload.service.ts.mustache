@@ -1,0 +1,100 @@
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import * as multer from 'multer';
+
+export interface FileUploadResult {
+  filename: string;
+  originalname: string;
+  mimetype: string;
+  size: number;
+  url: string;
+  path: string;
+}
+
+export interface FileUploadOptions {
+  destination?: string;
+  maxSize?: number; // in bytes
+  allowedTypes?: string[];
+  multiple?: boolean;
+}
+
+@Injectable()
+export class FileUploadService {
+  private readonly uploadDir = join(process.cwd(), 'uploads');
+
+  constructor() {
+    // Ensure upload directory exists
+    if (!existsSync(this.uploadDir)) {
+      mkdirSync(this.uploadDir, { recursive: true });
+    }
+  }
+
+  createMulterConfig(options: FileUploadOptions = {}) {
+    const {
+      destination = this.uploadDir,
+      maxSize = 5 * 1024 * 1024, // 5MB default
+      allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+      multiple = false,
+    } = options;
+
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        const fieldDestination = join(destination, file.fieldname);
+        if (!existsSync(fieldDestination)) {
+          mkdirSync(fieldDestination, { recursive: true });
+        }
+        cb(null, fieldDestination);
+      },
+      filename: (req, file, cb) => {
+        const uniqueName = `${uuidv4()}-${Date.now()}${this.getFileExtension(file.originalname)}`;
+        cb(null, uniqueName);
+      },
+    });
+
+    const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException(`File type ${file.mimetype} not allowed`));
+      }
+    };
+
+    return multer({
+      storage,
+      limits: {
+        fileSize: maxSize,
+        files: multiple ? 10 : 1,
+      },
+      fileFilter,
+    });
+  }
+
+  async handleFileUpload(
+    files: Express.Multer.File | Express.Multer.File[],
+    options: FileUploadOptions = {},
+  ): Promise<FileUploadResult | FileUploadResult[]> {
+    const fileArray = Array.isArray(files) ? files : [files];
+
+    const results = fileArray.map(file => ({
+      filename: file.filename,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      url: `/uploads/${file.fieldname}/${file.filename}`,
+      path: file.path,
+    }));
+
+    return options.multiple ? results : results[0];
+  }
+
+  deleteFile(filePath: string): void {
+    // Implementation to delete file from storage
+    // This would use the storage service (local/cloud)
+  }
+
+  private getFileExtension(filename: string): string {
+    return filename.substring(filename.lastIndexOf('.'));
+  }
+}

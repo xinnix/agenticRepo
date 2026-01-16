@@ -1,0 +1,54 @@
+# Docker Compose for Production
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencode-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-opencode}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: production
+    container_name: opencode-api-prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-opencode}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      target: production
+    container_name: opencode-admin-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:

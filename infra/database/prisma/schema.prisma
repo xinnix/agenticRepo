@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  username      String         @unique
+  email         String         @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  isActive      Boolean        @default(true)
+  emailVerified DateTime?
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  createdTodos  Todo[]         @relation("CreatedBy")
+  updatedTodos  Todo[]         @relation("UpdatedBy")
+  roles         UserRole[]
+
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  slug        String           @unique
+  description String?
+  level       Int              @default(0)
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@index([slug])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  resource    String
+  action      String
+  description String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  ipAddress String?
+  userAgent String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Todo {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  isCompleted Boolean   @default(false)
+  priority    Int       @default(1)
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  createdBy   User?     @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?     @relation("UpdatedBy", fields: [updatedById], references: [id])
+
+  @@map("todos")
+}
+
+model Category {
+  id             Int                @id @default(autoincrement())
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  name           String
+  slug           String             @unique
+  description    String?
+  parentId       Int
+  level          Int?               @default(1)
+  sortOrder      Int?               @default(0)
+  icon           String?
+  cover          String?
+  status         CategoryStatusEnum @default(ACTIVE)
+  seoTitle       String?
+  seoDescription String?
+}
+
+model Test {
+  id          Int            @id @default(autoincrement())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  name        String
+  description String?
+  status      TestStatusEnum @default(ACTIVE)
+  sortOrder   Int?           @default(0)
+}
+
+enum StatusEnum {
+  ACTIVE
+  INACTIVE
+}
+
+enum CategoryStatusEnum {
+  ACTIVE
+  INACTIVE
+}
+
+enum TestStatusEnum {
+  ACTIVE
+  INACTIVE
+}
+
+enum TestTodoStatusEnum {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TestTodoPriorityEnum {
+  1
+  2
+  3
+}
+
+model TestTodo {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title String
+  description String?
+  status TestTodoStatusEnum @default(PENDING)
+  priority TestTodoPriorityEnum @default(2)
+  dueDate DateTime?
+  assigneeId Int
+  projectId Int
+  estimatedHours Int?
+  actualHours Int?
+}
+
+enum TestProductStatusEnum {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+
+model TestProduct {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+  description String?
+  price Int
+  costPrice Int?
+  sku String @unique
+  barcode String? @unique
+  categoryId Int
+  brand String?
+  stock Int? @default(0)
+  minStock Int? @default(0)
+  weight Int?
+  dimensions String?
+  images String?
+  status TestProductStatusEnum @default(ACTIVE)
+  featured Boolean @default(false)
+}
+
+enum SkillTodoStatusEnum {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SkillTodoPriorityEnum {
+  1
+  2
+  3
+}
+
+model SkillTodo {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title String
+  description String?
+  status SkillTodoStatusEnum @default(PENDING)
+  priority SkillTodoPriorityEnum @default(2)
+  dueDate DateTime?
+  assigneeId Int
+  projectId Int
+  estimatedHours Int?
+  actualHours Int?
+}
