@@ -33,7 +33,10 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/user-prompt-submit.sh" }
+          {
+            "type": "command",
+            "command": "sh ./.claude/hooks/user-prompt-submit.sh"
+          }
         ]
       }
     ],
@@ -41,7 +44,7 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/before-edit.sh" }
+          { "type": "command", "command": "sh ./.claude/hooks/before-edit.sh" }
         ]
       }
     ],
@@ -49,12 +52,9 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/after-edit.sh" }
+          { "type": "command", "command": "sh ./.claude/hooks/after-edit.sh" }
         ]
       }
     ]
-  },
-  "skillsPath": "./.claude/skills",
-  "subagentsPath": "./.claude/subagents.json",
-  "systemPromptPath": "./.claude/prompts/project-context.md"
+  }
 }

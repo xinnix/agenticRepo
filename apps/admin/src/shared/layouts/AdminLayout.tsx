@@ -1,21 +1,45 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Layout, Menu, Dropdown, Avatar, Space } from "antd";
+import { Layout, Menu, Dropdown, Avatar, Space, Spin } from "antd";
 import {
   DashboardOutlined,
   CheckSquareOutlined,
   UserOutlined,
   TeamOutlined,
+  ShoppingCartOutlined,
+  FolderOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../auth/AuthContext";
 import type { MenuProps } from "antd";
+import "./AdminLayout.css";
 
 const { Header, Content, Sider } = Layout;
 
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate("/login", { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const menuItems = [
     {
@@ -29,6 +53,12 @@ export const AdminLayout: React.FC = () => {
       icon: <CheckSquareOutlined />,
       label: "待办事项",
       onClick: () => navigate("/todo"),
+    },
+        {
+      key: "/categories",
+      icon: <FolderOutlined />,
+      label: "分类管理",
+      onClick: () => navigate("/categories"),
     },
     {
       key: "/users",
@@ -59,32 +89,33 @@ export const AdminLayout: React.FC = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider theme="light">
-        <div style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: 18 }}>
+    <Layout className="admin-layout">
+      <Sider theme="dark" className="admin-sider">
+        <div className="admin-logo">
           Admin Panel
         </div>
         <Menu
           mode="inline"
           defaultSelectedKeys={["/dashboard"]}
           items={menuItems}
+          theme="dark"
         />
       </Sider>
       <Layout>
-        <Header style={{ background: "#fff", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>管理系统</div>
+        <Header className="admin-header">
+          <div className="admin-header-title">管理系统</div>
           <Space>
-            <span style={{ marginRight: 8 }}>{user?.username || '用户'}</span>
+            <span className="admin-username">{user?.username || '用户'}</span>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Avatar
                 src={user?.avatar}
                 icon={<UserOutlined />}
-                style={{ cursor: 'pointer' }}
+                className="admin-avatar"
               />
             </Dropdown>
           </Space>
         </Header>
-        <Content style={{ margin: "24px", padding: 24, background: "#fff", borderRadius: 8 }}>
+        <Content className="admin-content">
           <Outlet />
         </Content>
       </Layout>

@@ -285,12 +285,50 @@ async function main() {
   console.log('Creating test users...');
 
   const testUsers = [
-    { username: 'editor1', email: 'editor@example.com', role: editorRole },
-    { username: 'viewer1', email: 'viewer@example.com', role: viewerRole },
+    {
+      username: 'editor1',
+      email: 'editor@example.com',
+      password: 'test123',
+      firstName: '张',
+      lastName: '编辑',
+      role: editorRole,
+    },
+    {
+      username: 'viewer1',
+      email: 'viewer@example.com',
+      password: 'test123',
+      firstName: '李',
+      lastName: '查看',
+      role: viewerRole,
+    },
+    {
+      username: 'admin1',
+      email: 'admin1@example.com',
+      password: 'admin123',
+      firstName: '王',
+      lastName: '管理',
+      role: adminRole,
+    },
+    {
+      username: 'admin2',
+      email: 'admin2@example.com',
+      password: 'admin123',
+      firstName: '赵',
+      lastName: '管理员',
+      role: adminRole,
+    },
+    {
+      username: 'super_admin2',
+      email: 'super2@example.com',
+      password: 'super123',
+      firstName: '陈',
+      lastName: '超级',
+      role: superAdminRole,
+    },
   ];
 
   for (const testUser of testUsers) {
-    const passwordHash = await bcrypt.hash('test123', 10);
+    const passwordHash = await bcrypt.hash(testUser.password, 10);
 
     const user = await prisma.user.upsert({
       where: { email: testUser.email },
@@ -299,6 +337,8 @@ async function main() {
         username: testUser.username,
         email: testUser.email,
         passwordHash,
+        firstName: testUser.firstName,
+        lastName: testUser.lastName,
         isActive: true,
       },
     });
@@ -318,14 +358,57 @@ async function main() {
     });
   }
 
-  console.log("✅ Created test users (editor@example.com, viewer@example.com / test123)");
+  console.log('✅ Created test users');
+
+  // ============================================
+  // 6. Create Mock Todos
+  // ============================================
+  console.log('Creating mock todos...');
+
+  const todoTitles = [
+    '完成项目文档',
+    '修复登录bug',
+    '优化数据库查询',
+    '添加用户权限管理',
+    '更新API文档',
+    '编写单元测试',
+    '代码审查',
+    '部署到生产环境',
+    '团队周会',
+    '学习新技术',
+  ];
+
+  for (const title of todoTitles) {
+    await prisma.todo.upsert({
+      where: { id: `todo-${title}` },
+      update: {},
+      create: {
+        id: `todo-${title}`,
+        title,
+        description: `这是关于"${title}"的详细描述`,
+        priority: Math.floor(Math.random() * 3) + 1,
+        isCompleted: Math.random() > 0.7,
+        createdById: adminUser.id,
+        updatedById: adminUser.id,
+      },
+    });
+  }
+
+  console.log('✅ Created mock todos');
 
   console.log('🎉 Seed completed successfully!');
   console.log('');
   console.log('Login credentials:');
-  console.log('  Admin:    admin@example.com / admin123');
-  console.log('  Editor:   editor@example.com / test123');
-  console.log('  Viewer:   viewer@example.com / test123');
+  console.log('  Super Admin:');
+  console.log('    - admin@example.com / admin123');
+  console.log('    - super2@example.com / super123');
+  console.log('  Admin:');
+  console.log('    - admin1@example.com / admin123');
+  console.log('    - admin2@example.com / admin123');
+  console.log('  Editor:');
+  console.log('    - editor@example.com / test123');
+  console.log('  Viewer:');
+  console.log('    - viewer@example.com / test123');
 }
 
 main()

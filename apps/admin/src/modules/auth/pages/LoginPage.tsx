@@ -1,27 +1,27 @@
 import { Form, Input, Button, Card, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useLogin } from "@refinedev/core";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../shared/auth/AuthContext";
+import { useState } from "react";
 import "./LoginPage.css";
 
 export const LoginPage = () => {
-  const { mutate: login, isLoading } = useLogin();
+  const { login: authLogin } = useAuth();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onFinish = (values: any) => {
-    login(
-      { email: values.email, password: values.password },
-      {
-        onSuccess: () => {
-          message.success("登录成功");
-          navigate('/dashboard');
-        },
-        onError: (error: any) => {
-          message.error(error?.message || "登录失败");
-        },
-      },
-    );
+  const onFinish = async (values: any) => {
+    setIsLoading(true);
+    try {
+      await authLogin(values.email, values.password);
+      message.success("登录成功");
+      navigate('/dashboard');
+    } catch (error: any) {
+      message.error(error?.message || "登录失败");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

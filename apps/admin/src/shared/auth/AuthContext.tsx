@@ -33,7 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string) => {
-    await authProvider.login({ email, password });
+    const result = await authProvider.login({ email, password });
+
+    // Check if login failed
+    if (!result.success) {
+      throw new Error(result.error?.message || "登录失败");
+    }
+
     await checkAuth();
   };
 

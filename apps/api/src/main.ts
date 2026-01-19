@@ -1,11 +1,21 @@
 // apps/api/src/main.ts
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Load .env from apps/api directory
+dotenv.config();
+
+// Also load DATABASE_URL from infra/database/.env
+// For CommonJS compatibility, use relative path directly
+dotenv.config({ path: path.resolve(__dirname, "../../../infra/database/.env") });
+
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { PrismaService } from "./prisma.service";
-import { appRouter } from "./shared/trpc/app.router";
-import { createTRPCContext, setPrismaService } from "./shared/trpc/trpc";
+import { appRouter } from "./trpc/app.router";
+import { createContext, setPrismaService } from "./trpc/trpc";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
@@ -38,7 +48,7 @@ async function bootstrap() {
     "/trpc",
     trpcExpress.createExpressMiddleware({
       router: appRouter,
-      createContext: (opts) => createTRPCContext(opts),
+      createContext: (opts) => createContext(opts),
       onError({ error, path }) {
         console.error(`tRPC Error on path '${path}':`, error);
       },

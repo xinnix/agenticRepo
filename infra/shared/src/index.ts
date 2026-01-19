@@ -273,43 +273,6 @@ export const ProductSchema = {
   deleteInput: z.object({ id: z.number() }),
 };
 
-// Category Schemas
-export const CategorySchema = {
-  createInput: z.object({
-    name: z.string(),
-    slug: z.string(),
-    description: z.string().optional(),
-    parentId: z.number().optional(),
-    level: z.number(),
-    sortOrder: z.number(),
-    icon: z.string().optional(),
-    cover: z.string().optional(),
-    status: z.enum(["ACTIVE", "INACTIVE"]),
-    seoTitle: z.string().optional(),
-    seoDescription: z.string().optional(),
-  }),
-  updateInput: z.object({
-    id: z.number(),
-    name: z.string().optional(),
-    slug: z.string().optional(),
-    description: z.string().optional(),
-    parentId: z.number().optional(),
-    level: z.number().optional(),
-    sortOrder: z.number().optional(),
-    icon: z.string().optional(),
-    cover: z.string().optional(),
-    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
-    seoTitle: z.string().optional(),
-    seoDescription: z.string().optional(),
-  }),
-  getOneInput: z.object({ id: z.number() }),
-  getManyInput: z.object({
-    page: z.number().optional().default(1),
-    limit: z.number().optional().default(10),
-  }),
-  deleteInput: z.object({ id: z.number() }),
-};
-
 // Blog Schemas
 export const BlogSchema = {
   createInput: z.object({
@@ -428,6 +391,18 @@ export const TodoSchema = {
   deleteInput: z.object({ id: z.string() }),
 };
 
+// User Schemas (for createCrudRouter)
+export const UserSchema = {
+  createInput: CreateUserSchema,
+  updateInput: UpdateUserSchema,
+};
+
+// Role Schemas (for createCrudRouter)
+export const RoleSchema = {
+  createInput: CreateRoleSchema,
+  updateInput: UpdateRoleSchema,
+};
+
 // TestTodo Schemas
 export const TestTodoSchema = {
   createInput: z.object({
@@ -537,4 +512,40 @@ export const SkillTodoSchema = {
     limit: z.number().optional().default(10),
   }),
   deleteInput: z.object({ id: z.number() }),
+};
+
+// ============================================
+
+// ============================================
+// Category Schemas
+// ============================================
+
+export const CategorySchema = {
+  createInput: z.object({
+    name: z.string(),
+    slug: z.string(),
+    description: z.string().optional(),
+    parentId: z.string().optional(),
+    icon: z.string().optional(),
+    sortOrder: z.number().optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]),
+  }),
+
+  // updateInput is the data part only (id is handled by tRPC helper wrapper)
+  updateInput: z.object({
+    name: z.string().optional(),
+    slug: z.string().optional(),
+    description: z.string().nullable().optional(),
+    parentId: z.string().nullable().optional(),
+    icon: z.string().nullable().optional(),
+    sortOrder: z.number().optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  }),
+
+  getOneInput: z.object({ id: z.string() }),
+  getManyInput: z.object({
+    page: z.number().optional().default(1),
+    limit: z.number().optional().default(10),
+  }),
+  deleteInput: z.object({ id: z.string() }),
 };

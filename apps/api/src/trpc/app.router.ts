@@ -1,21 +1,18 @@
 import { router } from "./trpc";
 
-import { skilltodoRouter } from "./skill_todo.router";
-
-import { testproductRouter } from "./test_product.router";
-
-import { skilltodoRouter } from "./skill_todo.router";
-
-import { testtodoRouter } from "./test_todo.router";
-
-import { skilltodoRouter } from "./skill_todo.router";
-
-import { testproductRouter } from "./test_product.router";
-
-import { skilltodoRouter } from "./skill_todo.router";
+// Merge all feature routers here
+import { authRouter } from "../modules/auth/trpc/auth.router";
+import { todoRouter } from "../modules/todo/trpc/todo.router";
+import { userRouter } from "../modules/user/trpc/user.router";
+import { roleRouter } from "../modules/role/trpc/role.router";
+import { categoryRouter } from "../modules/category/trpc/category.router";
 
 export const appRouter = router({
-  // Routers will be merged here
+  auth: authRouter,
+  todo: todoRouter,
+  user: userRouter,
+  role: roleRouter,
+  category: categoryRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,0 +1,341 @@
+import { z } from "zod";
+import { router, publicProcedure, protectedProcedure } from "./trpc";
+
+/**
+ * Configuration options for createCrudRouter
+ */
+export interface CrudRouterOptions {
+  /** Include getMany procedure */
+  includeGetMany?: boolean;
+  /** Include getOne procedure */
+  includeGetOne?: boolean;
+  /** Include create procedure */
+  includeCreate?: boolean;
+  /** Include update procedure */
+  includeUpdate?: boolean;
+  /** Include delete procedure */
+  includeDelete?: boolean;
+  /** Include deleteMany procedure */
+  includeDeleteMany?: boolean;
+  /** Require authentication for getMany */
+  protectedGetMany?: boolean;
+  /** Require authentication for getOne */
+  protectedGetOne?: boolean;
+  /** Require authentication for create */
+  protectedCreate?: boolean;
+  /** Require authentication for update */
+  protectedUpdate?: boolean;
+  /** Require authentication for delete */
+  protectedDelete?: boolean;
+  /** Require authentication for deleteMany */
+  protectedDeleteMany?: boolean;
+}
+
+/**
+ * Default schemas for CRUD operations
+ */
+const defaultGetManySchema = z.object({
+  page: z.number().optional().default(1),
+  limit: z.number().optional().default(10),
+  skip: z.number().optional(),
+  take: z.number().optional(),
+  where: z.any().optional(),
+  orderBy: z.any().optional(),
+  include: z.any().optional(),
+  select: z.any().optional(),
+});
+
+const defaultGetOneSchema = z.object({
+  id: z.string(),
+  include: z.any().optional(),
+  select: z.any().optional(),
+});
+
+const defaultDeleteOneSchema = z.object({
+  id: z.string(),
+});
+
+const defaultDeleteManySchema = z.object({
+  ids: z.array(z.string()),
+});
+
+/**
+ * Creates a complete tRPC router with standard CRUD procedures.
+ *
+ * Uses the Prisma client from tRPC context (ctx.prisma) for database operations.
+ *
+ * @template TModelName - The Prisma model name (e.g., 'Todo', 'User', 'Post')
+ *
+ * @param modelName - The Prisma model name (capitalized, as defined in schema)
+ * @param schemas - Zod schemas for validation
+ * @param options - Optional configuration to include/exclude procedures
+ *
+ * @returns A tRPC router with CRUD procedures
+ *
+ * @example
+ * ```typescript
+ * import { createCrudRouter } from './trpc.helper';
+ * import { TodoSchema } from '@opencode/shared';
+ *
+ * export const todoRouter = createCrudRouter('Todo', {
+ *   create: TodoSchema.createInput,
+ *   update: TodoSchema.updateInput,
+ * });
+ * ```
+ */
+export const createCrudRouter = <TModelName extends string>(
+  modelName: TModelName,
+  schemas: {
+    /** Schema for creating a record (used for create input.data) */
+    create?: z.ZodTypeAny;
+    /** Schema for updating a record (used for update input.data) */
+    update?: z.ZodTypeAny;
+    /** Schema for getting many records (optional, uses default if not provided) */
+    getMany?: z.ZodTypeAny;
+    /** Schema for getting one record (optional, uses default if not provided) */
+    getOne?: z.ZodTypeAny;
+  },
+  options: CrudRouterOptions = {},
+) => {
+  const {
+    includeGetMany = true,
+    includeGetOne = true,
+    includeCreate = true,
+    includeUpdate = true,
+    includeDelete = true,
+    includeDeleteMany = true,
+    protectedGetMany = false,
+    protectedGetOne = false,
+    protectedCreate = false,
+    protectedUpdate = false,
+    protectedDelete = false,
+    protectedDeleteMany = false,
+  } = options;
+
+  const procedures: Record<string, any> = {};
+
+  // getMany - List records with pagination
+  if (includeGetMany) {
+    const procedure = protectedGetMany ? protectedProcedure : publicProcedure;
+    procedures.getMany = procedure
+      .input(schemas.getMany || defaultGetManySchema)
+      .query(async ({ ctx, input }) => {
+        const parsedInput = (schemas.getMany || defaultGetManySchema).safeParse(
+          input,
+        );
+        if (!parsedInput.success) {
+          throw parsedInput.error;
+        }
+        const data = parsedInput.data as any;
+
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const [items, total] = await Promise.all([
+          model.findMany({
+            skip:
+              data.skip ??
+              (data.page ? (data.page - 1) * (data.limit || 10) : 0),
+            take: data.take ?? data.limit,
+            where: data.where,
+            orderBy: data.orderBy,
+            include: data.include,
+            select: data.select,
+          }),
+          model.count({ where: data.where }),
+        ]);
+
+        return {
+          items,
+          total,
+          page: data.page || 1,
+          pageSize: data.limit || 10,
+          totalPages: Math.ceil(total / (data.limit || 10)),
+        };
+      });
+  }
+
+  // getOne - Get a single record by ID
+  if (includeGetOne) {
+    const procedure = protectedGetOne ? protectedProcedure : publicProcedure;
+    procedures.getOne = procedure
+      .input(schemas.getOne || defaultGetOneSchema)
+      .query(async ({ ctx, input }) => {
+        const parsedInput = (schemas.getOne || defaultGetOneSchema).safeParse(
+          input,
+        );
+        if (!parsedInput.success) {
+          throw parsedInput.error;
+        }
+        const data = parsedInput.data as any;
+
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        return model.findUnique({
+          where: { id: data.id },
+          include: data.include,
+          select: data.select,
+        });
+      });
+  }
+
+  // create - Create a new record
+  if (includeCreate) {
+    const procedure = protectedCreate ? protectedProcedure : publicProcedure;
+    const createInputSchema = z.object({
+      data: schemas.create || z.any(),
+      include: z.any().optional(),
+      select: z.any().optional(),
+    });
+
+    procedures.create = procedure
+      .input(createInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const parsedInput = createInputSchema.safeParse(input);
+        if (!parsedInput.success) {
+          throw parsedInput.error;
+        }
+        const data = parsedInput.data as any;
+
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const createData: any = { ...data.data };
+        // Inject userId if available in context
+        if ((ctx as any).user?.id) {
+          createData.createdById = (ctx as any).user.id;
+          createData.updatedById = (ctx as any).user.id;
+        }
+
+        return model.create({
+          data: createData,
+          include: data.include,
+          select: data.select,
+        });
+      });
+  }
+
+  // update - Update an existing record
+  if (includeUpdate) {
+    const procedure = protectedUpdate ? protectedProcedure : publicProcedure;
+    const updateInputSchema = z.object({
+      id: z.string(),
+      data: schemas.update || schemas.create || z.any(),
+      include: z.any().optional(),
+      select: z.any().optional(),
+    });
+
+    procedures.update = procedure
+      .input(updateInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const parsedInput = updateInputSchema.safeParse(input);
+        if (!parsedInput.success) {
+          throw parsedInput.error;
+        }
+        const data = parsedInput.data as any;
+
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const updateData: any = { ...data.data };
+        // Inject userId if available in context
+        if ((ctx as any).user?.id) {
+          updateData.updatedById = (ctx as any).user.id;
+        }
+
+        return model.update({
+          where: { id: data.id },
+          data: updateData,
+          include: data.include,
+          select: data.select,
+        });
+      });
+  }
+
+  // delete - Delete a single record
+  if (includeDelete) {
+    const procedure = protectedDelete ? protectedProcedure : publicProcedure;
+    procedures.delete = procedure
+      .input(defaultDeleteOneSchema)
+      .mutation(async ({ ctx, input }) => {
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        return model.delete({
+          where: { id: input.id },
+        });
+      });
+  }
+
+  // deleteMany - Delete multiple records
+  if (includeDeleteMany) {
+    const procedure = protectedDeleteMany ? protectedProcedure : publicProcedure;
+    procedures.deleteMany = procedure
+      .input(defaultDeleteManySchema)
+      .mutation(async ({ ctx, input }) => {
+        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        return model.deleteMany({
+          where: { id: { in: input.ids } },
+        });
+      });
+  }
+
+  return router(procedures);
+};
+
+/**
+ * Creates a minimal tRPC router with only read procedures.
+ *
+ * @param modelName - The Prisma model name
+ * @param schemas - Zod schemas for validation
+ * @returns A tRPC router with read-only procedures
+ */
+export const createReadOnlyRouter = <TModelName extends string>(
+  modelName: TModelName,
+  schemas?: {
+    getMany?: z.ZodTypeAny;
+    getOne?: z.ZodTypeAny;
+  },
+) => {
+  return createCrudRouter<TModelName>(modelName, schemas || {}, {
+    includeCreate: false,
+    includeUpdate: false,
+    includeDelete: false,
+    includeDeleteMany: false,
+  });
+};
+
+/**
+ * Creates a tRPC router with additional custom procedures.
+ *
+ * Use this when you need standard CRUD plus custom procedures.
+ *
+ * @example
+ * ```typescript
+ * export const todoRouter = createCrudRouterWithCustom(
+ *   'Todo',
+ *   { create: TodoSchema.createInput },
+ *   (t) => ({
+ *     toggleComplete: t.procedure
+ *       .input(z.object({ id: z.string() }))
+ *       .mutation(async ({ ctx, input }) => {
+ *         // Custom logic using ctx.prisma
+ *         const todo = await ctx.prisma.todo.update({
+ *           where: { id: input.id },
+ *           data: { isCompleted: true },
+ *         });
+ *         return todo;
+ *       }),
+ *   })
+ * );
+ * ```
+ */
+export const createCrudRouterWithCustom = <TModelName extends string>(
+  modelName: TModelName,
+  schemas: {
+    create?: z.ZodTypeAny;
+    update?: z.ZodTypeAny;
+    getMany?: z.ZodTypeAny;
+    getOne?: z.ZodTypeAny;
+  },
+  customProcedures: (t: typeof publicProcedure) => Record<string, any>,
+  options: CrudRouterOptions = {},
+) => {
+  const crudRouter = createCrudRouter<TModelName>(modelName, schemas, options);
+  const custom = customProcedures(publicProcedure);
+  return router({
+    ...crudRouter._def.procedures,
+    ...custom,
+  });
+};

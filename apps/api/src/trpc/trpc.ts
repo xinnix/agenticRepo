@@ -1,10 +1,114 @@
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import { PrismaService } from "../prisma.service";
+import jwt from "jsonwebtoken";
 
-export const createContext = async (opts: { prisma: PrismaService }) => {
+// Global PrismaService reference
+let prismaServiceInstance: PrismaService | null = null;
+
+export const setPrismaService = (prisma: PrismaService) => {
+  prismaServiceInstance = prisma;
+};
+
+// User interface for context
+interface User {
+  id: string;
+  email: string;
+  username?: string;
+  permissions: string[];
+  roles: any[];
+}
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+}
+
+/**
+ * Extract and verify JWT token from Authorization header
+ * Returns user object if token is valid, null otherwise
+ */
+async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | null> {
+  try {
+    // Extract Authorization header
+    const authHeader = req?.headers?.authorization || req?.req?.headers?.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return null;
+    }
+
+    // Verify JWT token
+    const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const payload = jwt.verify(token, secret) as JwtPayload;
+
+    // Fetch user from database with roles and permissions
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user || !user.isActive) {
+      return null;
+    }
+
+    // Flatten permissions
+    const permissions = user.roles?.flatMap((ur: any) =>
+      ur.role.permissions?.map((rp: any) =>
+        `${rp.permission.resource}:${rp.permission.action}`,
+      ),
+    ) || [];
+
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      permissions,
+      roles: user.roles?.map((ur: any) => ur.role) || [],
+    };
+  } catch (error) {
+    // Token is invalid or expired
+    if (error instanceof jwt.JsonWebTokenError) {
+      return null;
+    }
+    // Re-throw unexpected errors
+    throw error;
+  }
+}
+
+// Create context with optional user (from JWT verification)
+export const createContext = async (opts: any) => {
+  const prisma = prismaServiceInstance || opts?.prisma;
+  const req = opts?.req;
+
+  // Verify JWT token and get user
+  let user: User | null = null;
+  if (prisma && req) {
+    user = await verifyJwtToken(req, prisma);
+  }
+
   return {
-    prisma: opts.prisma,
+    prisma,
+    req,
+    res: opts?.res,
+    user,
   };
 };
 
@@ -25,3 +129,50 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+// Protected procedure - requires authentication
+// JWT token is verified in createContext, ctx.user will be null if no valid token
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required. Please provide a valid JWT token.',
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user,
+    },
+  });
+});
+
+// Permission procedure - requires specific permission
+export const permissionProcedure = (resource: string, action: string) =>
+  protectedProcedure.use(async ({ ctx, next }) => {
+    const permissionString = `${resource}:${action}`;
+
+    // Get user permissions from context
+    const userPermissions: string[] = ctx.user?.permissions || [];
+
+    if (!userPermissions.includes(permissionString)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: `Missing permission: ${permissionString}`,
+      });
+    }
+
+    return next();
+  });
+
+// Re-export CRUD helpers from trpc.helper
+export {
+  createCrudRouter,
+  createReadOnlyRouter,
+  createCrudRouterWithCustom,
+  type CrudRouterOptions,
+} from './trpc.helper';
+
+// BaseService can still be used for REST controllers or custom services
+export { BaseService } from '../common/base.service';

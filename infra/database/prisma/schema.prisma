@@ -121,130 +121,23 @@ model Todo {
   @@map("todos")
 }
 
+
+
+
+
+
+
+
 model Category {
-  id             Int                @id @default(autoincrement())
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  name           String
-  slug           String             @unique
-  description    String?
-  parentId       Int
-  level          Int?               @default(1)
-  sortOrder      Int?               @default(0)
-  icon           String?
-  cover          String?
-  status         CategoryStatusEnum @default(ACTIVE)
-  seoTitle       String?
-  seoDescription String?
-}
-
-model Test {
-  id          Int            @id @default(autoincrement())
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  name        String
-  description String?
-  status      TestStatusEnum @default(ACTIVE)
-  sortOrder   Int?           @default(0)
-}
-
-enum StatusEnum {
-  ACTIVE
-  INACTIVE
-}
-
-enum CategoryStatusEnum {
-  ACTIVE
-  INACTIVE
-}
-
-enum TestStatusEnum {
-  ACTIVE
-  INACTIVE
-}
-
-enum TestTodoStatusEnum {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum TestTodoPriorityEnum {
-  1
-  2
-  3
-}
-
-model TestTodo {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(cuid())
+  name                 String 
+  slug                 String 
+  description          String?
+  parentId             String?
+  icon                 String?
+  sortOrder            Int?
+  status               String  // ACTIVE, INACTIVE
+  priority  Int      @default(2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  title String
-  description String?
-  status TestTodoStatusEnum @default(PENDING)
-  priority TestTodoPriorityEnum @default(2)
-  dueDate DateTime?
-  assigneeId Int
-  projectId Int
-  estimatedHours Int?
-  actualHours Int?
-}
-
-enum TestProductStatusEnum {
-  ACTIVE
-  INACTIVE
-  DISCONTINUED
-}
-
-model TestProduct {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  name String
-  description String?
-  price Int
-  costPrice Int?
-  sku String @unique
-  barcode String? @unique
-  categoryId Int
-  brand String?
-  stock Int? @default(0)
-  minStock Int? @default(0)
-  weight Int?
-  dimensions String?
-  images String?
-  status TestProductStatusEnum @default(ACTIVE)
-  featured Boolean @default(false)
-}
-
-enum SkillTodoStatusEnum {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum SkillTodoPriorityEnum {
-  1
-  2
-  3
-}
-
-model SkillTodo {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title String
-  description String?
-  status SkillTodoStatusEnum @default(PENDING)
-  priority SkillTodoPriorityEnum @default(2)
-  dueDate DateTime?
-  assigneeId Int
-  projectId Int
-  estimatedHours Int?
-  actualHours Int?
 }
