@@ -18,22 +18,19 @@ import {
 import {
   ArrowLeftOutlined,
   EditOutlined,
-  DeleteOutlined,
   KeyOutlined,
   TeamOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import { PermissionCheckboxGroup } from "../components/PermissionCheckboxGroup";
 import type { AppRouter } from "../../../types/api";
-import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
+import { createTRPCProxyClient, httpLink } from "@trpc/client";
 
 // Create tRPC client for role operations
 const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
-    httpBatchLink({
+    httpLink({
       url: "http://localhost:3000/trpc",
-      transformer: superjson,
       headers: () => {
         const token = localStorage.getItem("accessToken");
         return {
@@ -139,31 +136,6 @@ export const RoleDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDelete = () => {
-    if (!role) return;
-
-    if (role.isSystem) {
-      message.error("系统角色不能删除");
-      return;
-    }
-
-    deleteOne(
-      {
-        resource: "role",
-        id: role.id,
-      },
-      {
-        onSuccess: () => {
-          message.success("删除成功");
-          navigate("/roles");
-        },
-        onError: (error: any) => {
-          message.error(error.message || "删除失败");
-        },
-      }
-    );
   };
 
   if (isLoading) {
@@ -314,16 +286,11 @@ export const RoleDetailPage = () => {
         }
         extra={
           <Space>
-            <Button icon={<EditOutlined />} onClick={() => message.info("编辑功能待实现")}>
-              编辑
-            </Button>
             <Button
-              icon={<DeleteOutlined />}
-              danger
-              onClick={handleDelete}
-              disabled={role.isSystem}
+              icon={<EditOutlined />}
+              onClick={() => message.info("请在列表页编辑角色信息")}
             >
-              删除
+              编辑
             </Button>
           </Space>
         }

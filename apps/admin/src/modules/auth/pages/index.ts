@@ -1,2 +1,2 @@
 export { LoginPage } from "./LoginPage";
-export { UnauthorizedPage, NotFoundPage } from "./UnauthorizedPage";
+export { SessionExpiredPage, UnauthorizedPage, NotFoundPage } from "./UnauthorizedPage";

@@ -13,7 +13,13 @@ dotenv.config({ path: path.resolve(__dirname, "../../../infra/database/.env") })
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { PrismaService } from "./prisma.service";
+import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
+
+// Debug: Check if JWT_SECRET is loaded
+console.log('[main.ts] JWT_SECRET from process.env:', process.env.JWT_SECRET?.substring(0, 20) + '...');
+console.log('[main.ts] PORT:', process.env.PORT);
+console.log('[main.ts] WX_APP_ID:', process.env.WX_APP_ID);
+import { PrismaService } from "./prisma/prisma.service";
 import { appRouter } from "./trpc/app.router";
 import { createContext, setPrismaService } from "./trpc/trpc";
 import * as trpcExpress from "@trpc/server/adapters/express";
@@ -30,6 +36,9 @@ async function bootstrap() {
     origin: corsOrigin === "*" ? "*" : corsOrigin.split(","),
   });
 
+  // Set global prefix for all REST API routes
+  app.setGlobalPrefix('api');
+
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -38,6 +47,9 @@ async function bootstrap() {
       transform: true,
     })
   );
+
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Set up tRPC middleware (tRPC handles body parsing internally)
   const prismaService = app.get(PrismaService);

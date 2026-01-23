@@ -1,15 +1,14 @@
 // apps/admin/src/modules/role/pages/RoleListPage.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
-import { List, DeleteButton } from "@refinedev/antd";
+import { useList, useUpdate } from "@refinedev/core";
+import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
   Modal,
   Form,
   Input,
-  InputNumber,
   Space,
   message,
   Tag,
@@ -17,7 +16,7 @@ import {
   Row,
   Col,
 } from "antd";
-import { PlusOutlined, SearchOutlined, TeamOutlined, KeyOutlined, SettingOutlined } from "@ant-design/icons";
+import { SearchOutlined, TeamOutlined, KeyOutlined } from "@ant-design/icons";
 import { RoleForm } from "../components/RoleForm";
 
 interface Role {
@@ -34,6 +33,15 @@ interface Role {
   };
 }
 
+/**
+ * 角色管理页面
+ *
+ * 系统固定四种角色，不允许创建或删除：
+ * - 超级管理员 (super_admin)
+ * - 管理员 (department_admin)
+ * - 处理员 (handler)
+ * - 普通用户 (user)
+ */
 export const RoleListPage = () => {
   const navigate = useNavigate();
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -41,27 +49,24 @@ export const RoleListPage = () => {
   const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
 
-  const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
   const { result, query } = useList<Role>({
     resource: "role",
     pagination: {
-      pageSize: 10,
+      pageSize: 50, // 显示所有角色
     },
     filters: searchText
       ? [{ field: "search", operator: "contains", value: searchText } as any]
       : [],
   });
 
-  const handleCreate = () => {
-    setEditingRecord(null);
-    form.resetFields();
-    setIsModalVisible(true);
-  };
-
   const handleEdit = (record: Role) => {
     setEditingRecord(record);
-    form.setFieldsValue(record);
+    form.setFieldsValue({
+      name: record.name,
+      description: record.description,
+      // 不允许修改 slug 和 level
+    });
     setIsModalVisible(true);
   };
 
@@ -69,15 +74,15 @@ export const RoleListPage = () => {
     try {
       const values = await form.validateFields();
 
+      // 只允许修改 name 和 description
       if (editingRecord) {
         update(
           {
             resource: "role",
             id: editingRecord.id,
             values: {
-              ...values,
-              // Prevent modifying slug for system roles
-              slug: editingRecord.isSystem ? editingRecord.slug : values.slug,
+              name: values.name,
+              description: values.description,
             },
           },
           {
@@ -87,24 +92,7 @@ export const RoleListPage = () => {
               query.refetch();
             },
             onError: (error: any) => {
-              message.error("更新失败");
-            },
-          }
-        );
-      } else {
-        create(
-          {
-            resource: "role",
-            values: values,
-          },
-          {
-            onSuccess: () => {
-              message.success("创建成功");
-              setIsModalVisible(false);
-              query.refetch();
-            },
-            onError: (error: any) => {
-              message.error("创建失败");
+              message.error("更新失败: " + (error.message || "未知错误"));
             },
           }
         );
@@ -116,15 +104,9 @@ export const RoleListPage = () => {
 
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      width: 80,
-      render: (id: string) => <span style={{ fontSize: 12, color: "#999" }}>{id.slice(0, 8)}...</span>,
-    },
-    {
       title: "角色名称",
       dataIndex: "name",
-      width: 130,
+      width: 150,
       render: (name: string, record: Role) => (
         <Space>
           <span>{name}</span>
@@ -135,21 +117,20 @@ export const RoleListPage = () => {
     {
       title: "标识",
       dataIndex: "slug",
-      width: 120,
+      width: 150,
       render: (slug: string) => <Tag color="default">{slug}</Tag>,
     },
     {
       title: "描述",
       dataIndex: "description",
-      width: 180,
       render: (desc: string) => desc || "-",
     },
     {
       title: "层级",
       dataIndex: "level",
-      width: 80,
+      width: 100,
       render: (level: number) => (
-        <Tag color={level < 50 ? "red" : level < 100 ? "orange" : "default"}>
+        <Tag color={level === 0 ? "red" : level < 50 ? "orange" : "default"}>
           {level}
         </Tag>
       ),
@@ -157,7 +138,7 @@ export const RoleListPage = () => {
     {
       title: "用户数",
       dataIndex: "_count",
-      width: 90,
+      width: 100,
       render: (count: Role["_count"]) => (
         <Tag icon={<TeamOutlined />} color="blue">
           {count.users}
@@ -167,7 +148,7 @@ export const RoleListPage = () => {
     {
       title: "权限数",
       dataIndex: "_count",
-      width: 90,
+      width: 100,
       render: (count: Role["_count"]) => (
         <Tag icon={<KeyOutlined />} color="green">
           {count.permissions}
@@ -177,6 +158,7 @@ export const RoleListPage = () => {
     {
       title: "操作",
       width: 180,
+      fixed: "right" as const,
       render: (_: any, record: Role) => (
         <Space size="small">
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
@@ -190,16 +172,6 @@ export const RoleListPage = () => {
           >
             权限
           </Button>
-          <DeleteButton
-            hideText
-            recordItemId={record.id}
-            resource="role"
-            disabled={record.isSystem}
-            onSuccess={() => {
-              message.success("删除成功");
-              query.refetch();
-            }}
-          />
         </Space>
       ),
     },
@@ -212,11 +184,9 @@ export const RoleListPage = () => {
           <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
             <Col>
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: "bold" }}>角色管理</h1>
-            </Col>
-            <Col>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                新建角色
-              </Button>
+              <div style={{ fontSize: 14, color: "#999", marginTop: 8 }}>
+                系统固定四种角色：超级管理员、管理员、处理员、普通用户
+              </div>
             </Col>
           </Row>
 
@@ -235,17 +205,11 @@ export const RoleListPage = () => {
             rowKey="id"
             dataSource={result?.data || []}
             loading={query.isLoading}
-            pagination={{
-              current: result?.page || 1,
-              pageSize: result?.pageSize || 10,
-              total: result?.total || 0,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条`,
-            }}
+            pagination={false}
           />
 
           <Modal
-            title={editingRecord ? "编辑角色" : "新建角色"}
+            title="编辑角色"
             open={isModalVisible}
             onOk={handleSubmit}
             onCancel={() => setIsModalVisible(false)}
@@ -253,7 +217,7 @@ export const RoleListPage = () => {
             cancelText="取消"
             width={600}
           >
-            <RoleForm form={form} isEdit={!!editingRecord} isSystemRole={editingRecord?.isSystem} />
+            <RoleForm form={form} isEdit={true} isSystemRole={true} />
           </Modal>
         </Card>
       </List>

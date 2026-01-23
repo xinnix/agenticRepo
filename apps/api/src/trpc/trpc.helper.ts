@@ -114,6 +114,37 @@ export const createCrudRouter = <TModelName extends string>(
 
   const procedures: Record<string, any> = {};
 
+  /**
+   * Convert foreign key fields to Prisma relation connect syntax
+   * e.g., { parentId: "xxx" } -> { parent: { connect: { id: "xxx" } } }
+   *
+   * Only transforms specific hierarchical fields like parentId, departmentId, etc.
+   * Does NOT transform audit fields like createdById, updatedById.
+   * Handles null/undefined/empty string by preserving the value for proper Prisma handling.
+   */
+  const transformRelationFields = (data: any): any => {
+    // Whitelist of foreign key fields that should be converted to relation connect syntax
+    const relationFields = ['parentId', 'departmentId', 'areaId', 'categoryId'];
+
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      // Skip null, undefined, or empty string values - let Prisma handle them directly
+      if (value === null || value === undefined || value === '') {
+        result[key] = value;
+        continue;
+      }
+      // Only transform whitelisted relation fields with valid values
+      if (relationFields.includes(key)) {
+        // Convert parentId -> parent, departmentId -> department, etc.
+        const relationName = key.charAt(0).toLowerCase() + key.slice(1, -2);
+        result[relationName] = { connect: { id: value } };
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  };
+
   // getMany - List records with pagination
   if (includeGetMany) {
     const procedure = protectedGetMany ? protectedProcedure : publicProcedure;
@@ -128,7 +159,7 @@ export const createCrudRouter = <TModelName extends string>(
         }
         const data = parsedInput.data as any;
 
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
         const [items, total] = await Promise.all([
           model.findMany({
             skip:
@@ -167,7 +198,7 @@ export const createCrudRouter = <TModelName extends string>(
         }
         const data = parsedInput.data as any;
 
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
         return model.findUnique({
           where: { id: data.id },
           include: data.include,
@@ -194,9 +225,10 @@ export const createCrudRouter = <TModelName extends string>(
         }
         const data = parsedInput.data as any;
 
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
-        const createData: any = { ...data.data };
-        // Inject userId if available in context
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
+        // Transform foreign key fields to relation connect syntax
+        const createData = transformRelationFields(data.data);
+        // Inject userId if available in context (these are plain FK fields, not relations)
         if ((ctx as any).user?.id) {
           createData.createdById = (ctx as any).user.id;
           createData.updatedById = (ctx as any).user.id;
@@ -229,11 +261,21 @@ export const createCrudRouter = <TModelName extends string>(
         }
         const data = parsedInput.data as any;
 
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
-        const updateData: any = { ...data.data };
-        // Inject userId if available in context
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
+        // Transform foreign key fields to relation connect syntax
+        const updateData = transformRelationFields(data.data);
+        // Inject userId if available in context (these are plain FK fields, not relations)
+        // Only add updatedById if the model has this field
         if ((ctx as any).user?.id) {
-          updateData.updatedById = (ctx as any).user.id;
+          // Check if model has updatedById field before adding it
+          // Models like Department don't have this field
+          const dmmf = (ctx.prisma as any)._dmmf;
+          if (dmmf && dmmf.modelMap) {
+            const modelInfo = dmmf.modelMap[modelName];
+            if (modelInfo && modelInfo.fields && modelInfo.fields.updatedById) {
+              updateData.updatedById = (ctx as any).user.id;
+            }
+          }
         }
 
         return model.update({
@@ -251,7 +293,7 @@ export const createCrudRouter = <TModelName extends string>(
     procedures.delete = procedure
       .input(defaultDeleteOneSchema)
       .mutation(async ({ ctx, input }) => {
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
         return model.delete({
           where: { id: input.id },
         });
@@ -264,7 +306,7 @@ export const createCrudRouter = <TModelName extends string>(
     procedures.deleteMany = procedure
       .input(defaultDeleteManySchema)
       .mutation(async ({ ctx, input }) => {
-        const model = (ctx.prisma as any)[modelName.toLowerCase()];
+        const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
         return model.deleteMany({
           where: { id: { in: input.ids } },
         });

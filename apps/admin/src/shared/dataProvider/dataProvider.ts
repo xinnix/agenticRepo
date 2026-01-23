@@ -1,7 +1,7 @@
 import type { AppRouter } from "../../types/api";
 import { createTRPCProxyClient, httpLink, TRPCClientError } from "@trpc/client";
 import { QueryClient } from "@tanstack/react-query";
-import { message, Modal } from "antd";
+import { message } from "antd";
 
 // Create QueryClient for React Query
 export const queryClient = new QueryClient({
@@ -17,43 +17,45 @@ export const queryClient = new QueryClient({
  * Handle tRPC errors with global message notification
  */
 function handleTRPCError(error: unknown) {
+  console.log('[handleTRPCError] Error received:', error);
+
   if (error instanceof TRPCClientError) {
     const errorMessage = error.data?.message || error.message || "操作失败，请稍后重试";
 
-    // Handle different error codes
-    const errorShape = error.data;
-    if (errorShape?.code) {
-      switch (errorShape.code) {
+    // Get error code from different possible locations in tRPC error structure
+    // In tRPC v11, the code can be at error.data.code or directly at error.data
+    const errorCode = (error.data as any)?.code || (error.data as any)?.httpStatus;
+
+    console.log('[handleTRPCError] TRPCClientError detected, code:', errorCode, 'data:', error.data);
+
+    if (errorCode) {
+      switch (errorCode) {
         case "UNAUTHORIZED":
-          // Show modal for unauthorized error with login redirect
-          Modal.error({
-            title: "未授权访问",
-            content: "您的登录已过期，请重新登录后继续操作",
-            okText: "前往登录",
-            onOk: () => {
-              window.location.href = "/login";
-            },
-            maskClosable: false,
-            keyboard: false, // Disable ESC key to prevent accidental close
-          });
-          break;
+          console.log('[handleTRPCError] Redirecting to unauthorized page');
+          // Clear auth data and redirect to session expired page
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          window.location.href = "/unauthorized";
+          return;
         case "FORBIDDEN":
           message.error("没有权限执行此操作");
-          break;
+          return;
         case "NOT_FOUND":
           message.error("请求的资源不存在");
-          break;
+          return;
         case "CONFLICT":
           message.error(errorMessage);
-          break;
+          return;
         case "BAD_REQUEST":
           message.error(errorMessage);
-          break;
+          return;
         case "INTERNAL_SERVER_ERROR":
           message.error("服务器错误，请稍后重试");
-          break;
+          return;
         default:
           message.error(errorMessage);
+          return;
       }
     } else {
       // Network error or other errors
@@ -64,15 +66,17 @@ function handleTRPCError(error: unknown) {
       }
     }
   } else if (error instanceof Error) {
+    console.log('[handleTRPCError] Generic Error:', error.message);
     message.error(error.message || "操作失败，请稍后重试");
   } else {
+    console.log('[handleTRPCError] Unknown error type');
     message.error("操作失败，请稍后重试");
   }
 }
 
 // Create a standalone tRPC client for data provider
 // Use httpLink for single requests instead of batch
-const trpcClient = createTRPCProxyClient<AppRouter>({
+export const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
     httpLink({
       url: "http://localhost:3000/trpc",
@@ -103,9 +107,44 @@ export const dataProvider = {
   /**
    * Get a paginated list of records
    */
-  getList: async ({ resource, pagination, filters, sorters }: any) => {
+  getList: async ({ resource, pagination, filters, sorters, meta }: any) => {
     try {
       const { page = 1, pageSize = 10 } = pagination || {};
+
+      // Handle custom methods (like getTree, getManyFiltered)
+      if (meta?.method) {
+        // Extract filter values for custom methods
+        const filterValues: any = {};
+        if (filters?.length) {
+          for (const filter of filters) {
+            if (filter.field && filter.value !== undefined) {
+              filterValues[filter.field] = filter.value;
+            }
+          }
+        }
+
+        // Call custom method with filters
+        const customResult = await (trpcClient as any)[resource][meta.method].query({
+          page,
+          limit: pageSize,
+          ...filterValues,
+        });
+
+        // Handle different return formats:
+        // - Array: directly return as data (e.g., getTree)
+        // - Object with items/total: use that format (e.g., getManyFiltered)
+        if (Array.isArray(customResult)) {
+          return {
+            data: customResult,
+            total: customResult.length,
+          };
+        }
+
+        return {
+          data: customResult.items || [],
+          total: customResult.total || 0,
+        };
+      }
 
       // Build where clause from filters
       const where: any = {};

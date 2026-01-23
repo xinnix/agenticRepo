@@ -20,9 +20,9 @@ export const todoRouter = createCrudRouter(
   },
   {
     // Require authentication for mutations
-    protectedCreateOne: true,
-    protectedUpdateOne: true,
-    protectedDeleteOne: true,
+    protectedCreate: true,
+    protectedUpdate: true,
+    protectedDelete: true,
     protectedDeleteMany: true,
   }
 );

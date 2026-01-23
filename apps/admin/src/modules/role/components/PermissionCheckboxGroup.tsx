@@ -2,15 +2,13 @@
 import { useEffect, useState } from "react";
 import { Checkbox, Space, Spin, Alert } from "antd";
 import type { AppRouter } from "../../../types/api";
-import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
+import { createTRPCProxyClient, httpLink } from "@trpc/client";
 
 // Create tRPC client for permission loading
 const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
-    httpBatchLink({
+    httpLink({
       url: "http://localhost:3000/trpc",
-      transformer: superjson,
       headers: () => {
         const token = localStorage.getItem("accessToken");
         return {
@@ -57,12 +55,14 @@ export const PermissionCheckboxGroup = ({ selectedIds, onChange }: PermissionChe
     const loadPermissions = async () => {
       setLoading(true);
       try {
-        // Call the getMany endpoint to get grouped permissions
-        const data = await (trpcClient as any).permission.getMany.query();
+        // Call the getByResource endpoint to get grouped permissions
+        const data = await (trpcClient as any).permission.getByResource.query();
 
         if (data) {
           // The data is already grouped by resource from the backend
           setGroupedPermissions(data);
+        } else {
+          setGroupedPermissions({});
         }
       } catch (err) {
         console.error("Failed to load permissions:", err);

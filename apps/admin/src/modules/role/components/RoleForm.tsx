@@ -1,5 +1,5 @@
 // apps/admin/src/modules/role/components/RoleForm.tsx
-import { Form, Input, InputNumber, Row, Col } from "antd";
+import { Form, Input } from "antd";
 
 interface RoleFormProps {
   form: any;
@@ -7,36 +7,23 @@ interface RoleFormProps {
   isSystemRole?: boolean;
 }
 
+/**
+ * 角色表单
+ *
+ * 系统角色只允许编辑名称和描述，slug 和 level 是固定的
+ */
 export const RoleForm = ({ form, isEdit = false, isSystemRole = false }: RoleFormProps) => {
   return (
     <Form form={form} layout="vertical">
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="name"
-            label="角色名称"
-            rules={[
-              { required: true, message: "请输入角色名称" },
-            ]}
-          >
-            <Input placeholder="请输入角色名称" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="slug"
-            label="角色标识"
-            rules={[
-              { required: true, message: "请输入角色标识" },
-            ]}
-          >
-            <Input
-              placeholder="请输入角色标识（如：editor）"
-              disabled={isSystemRole}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Form.Item
+        name="name"
+        label="角色名称"
+        rules={[
+          { required: true, message: "请输入角色名称" },
+        ]}
+      >
+        <Input placeholder="请输入角色名称" />
+      </Form.Item>
 
       <Form.Item
         name="description"
@@ -45,22 +32,11 @@ export const RoleForm = ({ form, isEdit = false, isSystemRole = false }: RoleFor
         <Input.TextArea placeholder="请输入角色描述" rows={3} />
       </Form.Item>
 
-      <Form.Item
-        name="level"
-        label="层级"
-        rules={[
-          { required: true, message: "请输入层级" },
-          { type: "number", min: 0, max: 1000, message: "层级必须在 0-1000 之间" },
-        ]}
-        initialValue={100}
-      >
-        <InputNumber
-          placeholder="请输入层级"
-          style={{ width: "100%" }}
-          min={0}
-          max={1000}
-        />
-      </Form.Item>
+      {isSystemRole && (
+        <div style={{ color: "#999", fontSize: 12, marginTop: 16 }}>
+          注：系统角色的标识（slug）和层级（level）不可修改
+        </div>
+      )}
     </Form>
   );
 };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { authProvider } from "./authProvider";
 
 interface AuthContextType {
@@ -15,24 +15,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const isInitialized = useRef(false);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // Check auth function - use ref to track initialization
+  const checkAuth = useCallback(async () => {
+    // Prevent multiple simultaneous calls using ref only
+    if (isInitialized.current) {
+      return;
+    }
 
-  const checkAuth = async () => {
     try {
       const identity = await authProvider.getIdentity?.();
       setUser(identity);
       setIsAuthenticated(true);
     } catch {
       setIsAuthenticated(false);
+      setUser(null);
     } finally {
       setIsLoading(false);
+      isInitialized.current = true;
     }
-  };
+  }, []); // Empty deps - function is stable
 
-  const login = async (email: string, password: string) => {
+  useEffect(() => {
+    checkAuth();
+  }, []); // Run once on mount
+
+  const login = useCallback(async (email: string, password: string) => {
     const result = await authProvider.login({ email, password });
 
     // Check if login failed
@@ -40,17 +49,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(result.error?.message || "登录失败");
     }
 
-    await checkAuth();
-  };
+    // Update state directly
+    const identity = await authProvider.getIdentity?.();
+    setUser(identity);
+    setIsAuthenticated(true);
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authProvider.logout?.({});
     setIsAuthenticated(false);
     setUser(null);
-  };
+    isInitialized.current = false;
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = React.useMemo(
+    () => ({
+      isAuthenticated,
+      isLoading,
+      user,
+      login,
+      logout,
+    }),
+    [isAuthenticated, isLoading, user, login, logout]
+  );
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -26,5 +26,8 @@
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
     "tsx": "4.21.0"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0"
   }
 }

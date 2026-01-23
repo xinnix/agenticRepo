@@ -365,9 +365,9 @@ export const roleRouter = createCrudRouterWithCustom(
     // We provide our own custom CRUD implementations
     includeGetMany: false,
     includeGetOne: false,
-    includeCreateOne: false,
-    includeUpdateOne: false,
-    includeDeleteOne: false,
+    includeCreate: false,
+    includeUpdate: false,
+    includeDelete: false,
     includeDeleteMany: false,
   }
 );

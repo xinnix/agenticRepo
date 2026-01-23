@@ -1,0 +1,140 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/submit/index",
+      "style": {
+        "navigationBarTitleText": "提交反馈"
+      }
+    },
+    {
+      "path": "pages/user/my-tickets/index",
+      "style": {
+        "navigationBarTitleText": "我的反馈"
+      }
+    },
+    {
+      "path": "pages/user/ticket-detail/index",
+      "style": {
+        "navigationBarTitleText": "工单详情"
+      }
+    },
+    {
+      "path": "pages/user/rate/index",
+      "style": {
+        "navigationBarTitleText": "评价"
+      }
+    },
+    {
+      "path": "pages/user/apply-handler/index",
+      "style": {
+        "navigationBarTitleText": "申请成为办事员"
+      }
+    },
+    {
+      "path": "pages/handler/dashboard/index",
+      "style": {
+        "navigationBarTitleText": "工作台"
+      }
+    },
+    {
+      "path": "pages/handler/task-pool/index",
+      "style": {
+        "navigationBarTitleText": "待接单池"
+      }
+    },
+    {
+      "path": "pages/handler/my-tasks/index",
+      "style": {
+        "navigationBarTitleText": "我的任务"
+      }
+    },
+    {
+      "path": "pages/handler/task-detail/index",
+      "style": {
+        "navigationBarTitleText": "任务详情"
+      }
+    },
+    {
+      "path": "pages/common/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    }
+  ],
+  // 自定义TabBar配置（官方推荐方式）
+  // 重要：需要设置custom: true，同时保留完整的tabBar配置
+  // 配置项用于标识tab页，不会作用于自定义渲染
+  "tabBar": {
+    "custom": true,
+    "color": "#8E8E93",
+    "selectedColor": "#007AFF",
+    "backgroundColor": "#F2F2F7",
+    "borderStyle": "white",
+    "list": [
+      // 普通用户Tab
+      {
+        "pagePath": "pages/user/submit/index",
+        "text": "提交反馈",
+        "iconPath": "static/tab_submit.png",
+        "selectedIconPath": "static/tab_submit_active.png"
+      },
+      {
+        "pagePath": "pages/user/my-tickets/index",
+        "text": "我的反馈",
+        "iconPath": "static/tab_ticket.png",
+        "selectedIconPath": "static/tab_ticket_active.png"
+      },
+      {
+        "pagePath": "pages/common/profile/index",
+        "text": "我的",
+        "iconPath": "static/tab_profile.png",
+        "selectedIconPath": "static/tab_profile_active.png"
+      },
+      // 处理人员Tab
+      {
+        "pagePath": "pages/handler/dashboard/index",
+        "text": "工作台",
+        "iconPath": "static/tab_dashboard.png",
+        "selectedIconPath": "static/tab_dashboard_active.png"
+      },
+      {
+        "pagePath": "pages/handler/task-pool/index",
+        "text": "待接单池",
+        "iconPath": "static/tab_pool.png",
+        "selectedIconPath": "static/tab_pool_active.png"
+      },
+      {
+        "pagePath": "pages/handler/my-tasks/index",
+        "text": "我的任务",
+        "iconPath": "static/tab_tasks.png",
+        "selectedIconPath": "static/tab_tasks_active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "反馈系统",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F2F2F7"
+  },
+  "uniIdRouter": {}
+}

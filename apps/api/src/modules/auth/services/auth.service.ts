@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
-import { PrismaService } from '../../../prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import axios from 'axios';
 
 // 🔥 使用 @opencode/shared 的类型和 schema
 import {
@@ -18,7 +19,12 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    console.log('[AuthService] ================================');
+    console.log('[AuthService] JWT_SECRET from process.env:', !!process.env.JWT_SECRET);
+    console.log('[AuthService] process.env.JWT_SECRET value:', process.env.JWT_SECRET?.substring(0, 30) + '...');
+    console.log('[AuthService] ================================');
+  }
 
   /**
    * 🔐 注册新用户
@@ -45,12 +51,12 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(data.password, 10);
 
     // 4️⃣ 获取默认角色
-    const viewerRole = await this.prisma.role.findUnique({
-      where: { slug: 'viewer' },
+    const userRole = await this.prisma.role.findUnique({
+      where: { slug: 'user' },
     });
 
-    if (!viewerRole) {
-      throw new Error('Viewer 角色未找到，请先运行数据库种子');
+    if (!userRole) {
+      throw new Error('普通用户角色未找到，请先运行数据库种子');
     }
 
     // 5️⃣ 创建用户
@@ -63,7 +69,7 @@ export class AuthService {
         lastName: data.lastName,
         roles: {
           create: {
-            roleId: viewerRole.id,
+            roleId: userRole.id,
           },
         },
       },
@@ -274,10 +280,12 @@ export class AuthService {
    */
   private async generateTokens(user: any) {
     // 生成访问令牌
+    console.log('[AuthService] Generating token with JWT_SECRET:', !!process.env.JWT_SECRET);
     const accessToken = this.jwtService.sign({
       sub: user.id,
       email: user.email,
     });
+    console.log('[AuthService] Generated token:', accessToken.substring(0, 30) + '...');
 
     // 生成刷新令牌
     const refreshToken = randomBytes(32).toString('hex');
@@ -296,5 +304,177 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * 📱 微信小程序登录
+   */
+  async wxLogin(input: {
+    code: string;
+    phoneCode?: string; // 手机号改为可选
+    userInfo?: { nickName: string; avatarUrl: string };
+  }) {
+    console.log('DEBUG wxLogin - prisma:', !!this.prisma, 'jwt:', !!this.jwtService);
+    // 1️⃣ 从环境变量获取微信配置
+    const wxAppId = process.env.WX_APP_ID;
+    const wxAppSecret = process.env.WX_APP_SECRET;
+
+    if (!wxAppId || !wxAppSecret) {
+      throw new Error('微信配置未设置，请在环境变量中配置 WX_APP_ID 和 WX_APP_SECRET');
+    }
+
+    // 2️⃣ 通过 code 换取 openid 和 session_key
+    let openid: string;
+    try {
+      const wxResponse = await axios.get(
+        `https://api.weixin.qq.com/sns/jscode2session?appid=${wxAppId}&secret=${wxAppSecret}&js_code=${input.code}&grant_type=authorization_code`,
+      );
+      openid = wxResponse.data.openid;
+      if (!openid) {
+        throw new Error(`获取 openid 失败: ${JSON.stringify(wxResponse.data)}`);
+      }
+    } catch (error) {
+      Logger.error('微信登录失败', error);
+      throw new UnauthorizedException('微信登录失败，请重试');
+    }
+
+    // 3️⃣ 通过 phoneCode 换取手机号（如果提供了 phoneCode）
+    let phone: string | undefined;
+    if (input.phoneCode) {
+      try {
+        const phoneResponse = await axios.post(
+          `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${await this.getWxAccessToken()}`,
+          { code: input.phoneCode },
+        );
+        phone = phoneResponse.data.phone_info?.phoneNumber;
+      } catch (error) {
+        Logger.warn('获取手机号失败，继续登录流程', error);
+      }
+    }
+
+    // 4️⃣ 查找或创建用户
+    let user = await this.prisma.user.findUnique({
+      where: { wxOpenId: openid },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      // 获取普通用户角色
+      const userRole = await this.prisma.role.findUnique({
+        where: { slug: 'user' },
+      });
+
+      if (!userRole) {
+        throw new Error('普通用户角色未找到，请先运行数据库种子');
+      }
+
+      // 创建新用户
+      user = await this.prisma.user.create({
+        data: {
+          wxOpenId: openid,
+          phone,
+          wxNickname: input.userInfo?.nickName,
+          wxAvatarUrl: input.userInfo?.avatarUrl,
+          username: `wx_${openid.substring(0, 8)}`,
+          email: `wx_${openid.substring(0, 8)}@temp.local`, // 临时邮箱
+          passwordHash: '', // 微信登录不需要密码
+          isActive: true,
+          roles: {
+            create: {
+              roleId: userRole.id,
+            },
+          },
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    } else {
+      // 更新现有用户信息
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          phone: phone || user.phone,
+          wxNickname: input.userInfo?.nickName || user.wxNickname,
+          wxAvatarUrl: input.userInfo?.avatarUrl || user.wxAvatarUrl,
+          lastLoginAt: new Date(),
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // 5️⃣ 生成 JWT token
+    const { accessToken, refreshToken } = await this.generateTokens(user as any);
+
+    // 6️⃣ 返回用户信息
+    const { passwordHash: _, ...sanitizedUser } = user;
+    const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
+      ur.role.permissions?.map((rp: any) =>
+        `${rp.permission.resource}:${rp.permission.action}`,
+      ),
+    ) || [];
+
+    return {
+      user: {
+        ...sanitizedUser,
+        permissions,
+      },
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
+   * 📱 获取微信 access_token（用于获取手机号等接口）
+   */
+  private async getWxAccessToken(): Promise<string> {
+    const wxAppId = process.env.WX_APP_ID;
+    const wxAppSecret = process.env.WX_APP_SECRET;
+
+    const response = await axios.get(
+      `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${wxAppId}&secret=${wxAppSecret}`,
+    );
+
+    return response.data.access_token;
   }
 }

@@ -71,7 +71,13 @@ export const authProvider: AuthProvider = {
   },
 
   onError: async (error: any) => {
-    if (error?.status === 401 || error?.status === 403) {
+    // Check tRPC error structure
+    const trpcCode = error?.data?.code;
+    const httpStatus = error?.data?.httpStatus;
+    // Also check standard HTTP error structure
+    const status = error?.status || error?.statusCode;
+
+    if (trpcCode === "UNAUTHORIZED" || httpStatus === 401 || status === 401) {
       return Promise.resolve({
         logout: true,
         redirectTo: "/login",

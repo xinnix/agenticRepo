@@ -120,7 +120,7 @@ export const RoleAssignmentModal = ({ open, user, onCancel, onSuccess }: RoleAss
     if (open) {
       rolesQuery.refetch();
     }
-  }, [open, rolesQuery]);
+  }, [open]);
 
   return (
     <Modal

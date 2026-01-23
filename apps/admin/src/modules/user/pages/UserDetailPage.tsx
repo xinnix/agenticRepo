@@ -238,7 +238,7 @@ export const UserDetailPage = () => {
         >
           <List
             dataSource={user.roles}
-            renderItem={(role) => (
+            renderItem={(role: any) => (
               <List.Item
                 actions={[
                   <Popconfirm

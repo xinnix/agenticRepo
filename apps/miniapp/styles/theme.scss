@@ -1,0 +1,50 @@
+/* uView Plus 主题配置 - Nordic 风格 */
+/* 此文件必须在 uview-plus/index.scss 之前引入 */
+
+/* ==================== 基础颜色变量 ==================== */
+$u-main-color: #3D3A36;         /* 主文本色 */
+$u-content-color: #5A5650;      /* 内容文本色 */
+$u-tips-color: #8E8E93;         /* 提示文本色 */
+$u-light-color: #C5C5C7;        /* 浅色文本 */
+$u-border-color: #E5E4E2;       /* 边框颜色 */
+$u-bg-color: #FAF9F7;           /* 页面背景色 - 北欧米白 */
+$u-disabled-color: #C5C5C7;     /* 禁用状态 */
+
+/* ==================== 主题色配置 - 北欧莫兰迪色系 ==================== */
+$u-primary: #667eea;            /* 主色 - 柔和蓝紫 */
+$u-primary-dark: #5a67d8;       /* 主色深色 */
+$u-primary-disabled: #a8b0e0;   /* 主色禁用 */
+$u-primary-light: #f0f2ff;      /* 主色浅色背景 */
+
+$u-warning: #faad14;            /* 警告色 */
+$u-warning-dark: #d49806;       /* 警告色深色 */
+$u-warning-disabled: #f5d699;   /* 警告色禁用 */
+$u-warning-light: #fff7e6;      /* 警告色浅色背景 */
+
+$u-success: #52c41a;            /* 成功色 */
+$u-success-dark: #3fa012;       /* 成功色深色 */
+$u-success-disabled: #a5d987;   /* 成功色禁用 */
+$u-success-light: #f6ffed;      /* 成功色浅色背景 */
+
+$u-error: #ff4d4f;              /* 错误色 */
+$u-error-dark: #d9363e;         /* 错误色深色 */
+$u-error-disabled: #f5a3a4;     /* 错误色禁用 */
+$u-error-light: #fff1f0;        /* 错误色浅色背景 */
+
+$u-info: #909399;               /* 信息色 */
+$u-info-dark: #767a82;          /* 信息色深色 */
+$u-info-disabled: #c4c6c9;      /* 信息色禁用 */
+$u-info-light: #f4f4f5;         /* 信息色浅色背景 */
+
+/* ==================== 状态色映射（业务语义） ==================== */
+$u-status-wait-assign: #faad14;         /* 待指派 - 使用警告色 */
+$u-status-wait-accept: #667eea;         /* 待接单 - 使用主题色 */
+$u-status-processing: #667eea;          /* 处理中 - 使用主题色 */
+$u-status-completed: #52c41a;           /* 已完成 - 使用成功色 */
+$u-status-closed: #909399;              /* 已关闭 - 使用信息色 */
+
+/* ==================== 优先级色映射 ==================== */
+$u-priority-low: #1890ff;               /* 低优先级 */
+$u-priority-normal: #52c41a;            /* 普通优先级 */
+$u-priority-high: #faad14;              /* 高优先级 */
+$u-priority-urgent: #ff4d4f;            /* 紧急优先级 */

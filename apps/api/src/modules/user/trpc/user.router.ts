@@ -154,8 +154,8 @@ export const userRouter = createCrudRouterWithCustom(
         };
       }),
 
-    // Custom createOne with password hashing and default role
-    createOne: permissionProcedure("user", "create")
+    // Custom create with password hashing and default role (named 'create' for consistency with dataProvider)
+    create: permissionProcedure("user", "create")
       .input(
         z.object({
           data: UserSchema.createInput,
@@ -216,8 +216,8 @@ export const userRouter = createCrudRouterWithCustom(
         return user;
       }),
 
-    // Custom updateOne with validation
-    updateOne: permissionProcedure("user", "update")
+    // Custom update with validation (named 'update' for consistency with dataProvider)
+    update: permissionProcedure("user", "update")
       .input(
         z.object({
           id: z.string(),
@@ -272,8 +272,8 @@ export const userRouter = createCrudRouterWithCustom(
         return user;
       }),
 
-    // Custom deleteOne with protection for last super admin
-    deleteOne: permissionProcedure("user", "delete")
+    // Custom delete with protection for last super admin
+    delete: permissionProcedure("user", "delete")
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         // Prevent self-deletion
@@ -317,8 +317,54 @@ export const userRouter = createCrudRouterWithCustom(
           }
         }
 
-        await ctx.prisma.user.delete({
-          where: { id: input.id },
+        // Delete user using a transaction to handle foreign key constraints
+        await ctx.prisma.$transaction(async (tx) => {
+          // 1. Remove user from all roles
+          await tx.userRole.deleteMany({
+            where: { userId: input.id },
+          });
+
+          // 2. Handle tickets - remove assignment
+          await tx.ticket.updateMany({
+            where: { assignedId: input.id },
+            data: { assignedId: null },
+          });
+
+          // 3. Handle tickets created by user - set to null or transfer
+          // For now, we'll delete tickets created by this user
+          await tx.ticket.deleteMany({
+            where: { createdById: input.id },
+          });
+
+          // 4. Handle comments
+          await tx.comment.deleteMany({
+            where: { userId: input.id },
+          });
+
+          // 5. Handle status history
+          await tx.statusHistory.deleteMany({
+            where: { userId: input.id },
+          });
+
+          // 6. Handle notifications
+          await tx.notification.deleteMany({
+            where: { userId: input.id },
+          });
+
+          // 7. Handle attachments uploaded by user
+          await tx.attachment.deleteMany({
+            where: { uploadedById: input.id },
+          });
+
+          // 8. Handle refresh tokens
+          await tx.refreshToken.deleteMany({
+            where: { userId: input.id },
+          });
+
+          // 9. Finally delete the user
+          await tx.user.delete({
+            where: { id: input.id },
+          });
         });
 
         return { success: true };
@@ -365,13 +411,60 @@ export const userRouter = createCrudRouterWithCustom(
           }
         }
 
-        const result = await ctx.prisma.user.deleteMany({
-          where: {
-            id: { in: filteredIds },
-          },
-        });
+        // Delete users using a transaction to handle foreign key constraints
+        let deletedCount = 0;
+        for (const userId of filteredIds) {
+          await ctx.prisma.$transaction(async (tx) => {
+            // 1. Remove user from all roles
+            await tx.userRole.deleteMany({
+              where: { userId },
+            });
 
-        return { success: true, count: result.count };
+            // 2. Handle tickets - remove assignment
+            await tx.ticket.updateMany({
+              where: { assignedId: userId },
+              data: { assignedId: null },
+            });
+
+            // 3. Handle tickets created by user
+            await tx.ticket.deleteMany({
+              where: { createdById: userId },
+            });
+
+            // 4. Handle comments
+            await tx.comment.deleteMany({
+              where: { userId },
+            });
+
+            // 5. Handle status history
+            await tx.statusHistory.deleteMany({
+              where: { userId },
+            });
+
+            // 6. Handle notifications
+            await tx.notification.deleteMany({
+              where: { userId },
+            });
+
+            // 7. Handle attachments
+            await tx.attachment.deleteMany({
+              where: { uploadedById: userId },
+            });
+
+            // 8. Handle refresh tokens
+            await tx.refreshToken.deleteMany({
+              where: { userId },
+            });
+
+            // 9. Delete the user
+            await tx.user.delete({
+              where: { id: userId },
+            });
+          });
+          deletedCount++;
+        }
+
+        return { success: true, count: deletedCount };
       }),
 
     // Toggle user active status
@@ -453,7 +546,8 @@ export const userRouter = createCrudRouterWithCustom(
         });
 
         if (existing) {
-          throw new Error("User already has this role");
+          // 用户已有该角色，直接返回成功
+          return { success: true, message: "用户已拥有该角色" };
         }
 
         await ctx.prisma.userRole.create({
@@ -559,14 +653,667 @@ export const userRouter = createCrudRouterWithCustom(
 
         return { success: true };
       }),
+
+    // ============================================
+    // Handler (办事员) Statistics Procedures
+    // ============================================
+
+    // Get handler statistics for a single user
+    getHandlerStats: publicProcedure
+      .input(z.object({
+        userId: z.string(),
+        startDate: z.string().datetime().optional(),
+        endDate: z.string().datetime().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { userId, startDate, endDate } = input;
+
+        const dateFilter: any = {};
+        if (startDate) dateFilter.gte = new Date(startDate);
+        if (endDate) dateFilter.lte = new Date(endDate);
+
+        const [
+          totalAssigned,
+          completed,
+          processing,
+          waitAssign,
+          waitAccept,
+          overdue,
+          avgRating,
+          recentTickets,
+        ] = await Promise.all([
+          // Total assigned tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}),
+            },
+          }),
+          // Completed tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              status: "COMPLETED",
+              ...(Object.keys(dateFilter).length > 0 ? { completedAt: dateFilter } : {}),
+            },
+          }),
+          // Processing tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              status: "PROCESSING",
+            },
+          }),
+          // Wait assign tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              status: "WAIT_ASSIGN",
+            },
+          }),
+          // Wait accept tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              status: "WAIT_ACCEPT",
+            },
+          }),
+          // Overdue tickets
+          ctx.prisma.ticket.count({
+            where: {
+              assignedId: userId,
+              isOverdue: true,
+            },
+          }),
+          // Average rating
+          ctx.prisma.ticket.aggregate({
+            where: {
+              assignedId: userId,
+              status: "CLOSED",
+              rating: { not: null },
+              ...(Object.keys(dateFilter).length > 0 ? { closedAt: dateFilter } : {}),
+            },
+            _avg: { rating: true },
+          }),
+          // Recent tickets (last 10)
+          ctx.prisma.ticket.findMany({
+            where: {
+              assignedId: userId,
+            },
+            take: 10,
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              ticketNumber: true,
+              title: true,
+              status: true,
+              priority: true,
+              createdAt: true,
+              completedAt: true,
+              rating: true,
+            },
+          }),
+        ]);
+
+        return {
+          totalAssigned,
+          completed,
+          processing,
+          waitAssign,
+          waitAccept,
+          overdue,
+          avgRating: avgRating._avg.rating || 0,
+          recentTickets,
+        };
+      }),
+
+    // Get list of handlers (WeChat users with handler role)
+    getHandlers: publicProcedure
+      .input(z.object({
+        page: z.number().optional().default(1),
+        pageSize: z.number().optional().default(10),
+        departmentId: z.string().optional(),
+        isActive: z.boolean().optional(),
+        search: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { page, pageSize, departmentId, isActive, search } = input;
+        const skip = (page - 1) * pageSize;
+
+        // Only get WeChat users with handler role
+        const where: any = {
+          // Must have WeChat OpenID (WeChat users only)
+          wxOpenId: { not: null },
+          // Must have handler role
+          roles: {
+            some: {
+              role: { slug: "handler" },
+            },
+          },
+        };
+
+        if (departmentId) {
+          where.departmentId = departmentId;
+        }
+
+        if (isActive !== undefined) {
+          where.isActive = isActive;
+        }
+
+        if (search) {
+          where.OR = [
+            { username: { contains: search, mode: "insensitive" } },
+            { realName: { contains: search, mode: "insensitive" } },
+            { firstName: { contains: search, mode: "insensitive" } },
+            { lastName: { contains: search, mode: "insensitive" } },
+            { wxNickname: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+          ];
+        }
+
+        const [handlers, total] = await Promise.all([
+          ctx.prisma.user.findMany({
+            where,
+            skip,
+            take: pageSize,
+            select: {
+              id: true,
+              username: true,
+              realName: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              wxNickname: true,
+              wxAvatarUrl: true,
+              position: true,
+              isActive: true,
+              department: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                },
+              },
+              _count: {
+                select: {
+                  assignedTickets: {
+                    where: {
+                      status: { in: ["PROCESSING", "WAIT_ACCEPT"] },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+          }),
+          ctx.prisma.user.count({ where }),
+        ]);
+
+        // Get completed count for each handler
+        const handlerIds = handlers.map(h => h.id);
+        const completedCounts = await Promise.all(
+          handlerIds.map(id =>
+            ctx.prisma.ticket.count({
+              where: {
+                assignedId: id,
+                status: "CLOSED",
+              },
+            })
+          )
+        );
+
+        const items = handlers.map((handler, index) => ({
+          ...handler,
+          currentTicketCount: handler._count.assignedTickets,
+          completedTicketCount: completedCounts[index],
+        }));
+
+        return {
+          items,
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        };
+      }),
+
+    // ============================================
+    // WeChat User Management Procedures
+    // ============================================
+
+    // Get WeChat users (users with wxOpenId)
+    // Note: Users with handler role are excluded from this list as they become handlers
+    getWxUsers: publicProcedure
+      .input(z.object({
+        page: z.number().optional().default(1),
+        pageSize: z.number().optional().default(10),
+        search: z.string().optional(),
+        isActive: z.boolean().optional(),
+        roleSlug: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { page, pageSize, search, isActive, roleSlug } = input;
+        const skip = (page - 1) * pageSize;
+
+        // WeChat users have wxOpenId set
+        // Exclude users who already have handler role (they become handlers)
+        const where: any = {
+          wxOpenId: { not: null },
+          // Exclude users with handler role
+          roles: {
+            none: {
+              role: { slug: "handler" },
+            },
+          },
+        };
+
+        if (search) {
+          where.OR = [
+            { wxNickname: { contains: search, mode: "insensitive" } },
+            { username: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+          ];
+        }
+
+        if (isActive !== undefined) {
+          where.isActive = isActive;
+        }
+
+        if (roleSlug) {
+          where.roles = {
+            some: {
+              role: { slug: roleSlug },
+            },
+          };
+        }
+
+        const [users, total] = await Promise.all([
+          ctx.prisma.user.findMany({
+            where,
+            skip,
+            take: pageSize,
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              phone: true,
+              realName: true,       // 新增：真实姓名
+              wxNickname: true,
+              wxAvatarUrl: true,
+              wxOpenId: true,
+              isActive: true,
+              createdAt: true,
+              lastLoginAt: true,
+              position: true,
+              departmentId: true,   // 新增：部门ID
+              handlerStatus: true,  // 新增：办事员申请状态
+              department: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              roles: {
+                select: {
+                  role: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                      level: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          ctx.prisma.user.count({ where }),
+        ]);
+
+        return {
+          items: users.map((user) => ({
+            ...user,
+            roles: user.roles.map((r) => r.role),
+          })),
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        };
+      }),
+
+    // ============================================
+    // Admin User Management Procedures
+    // ============================================
+
+    // Get admin users (users without wxOpenId - backend login users)
+    getAdminUsers: publicProcedure
+      .input(z.object({
+        page: z.number().optional().default(1),
+        pageSize: z.number().optional().default(10),
+        search: z.string().optional(),
+        isActive: z.boolean().optional(),
+        roleSlug: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { page, pageSize, search, isActive, roleSlug } = input;
+        const skip = (page - 1) * pageSize;
+
+        // Admin users don't have wxOpenId (they login via backend)
+        const where: any = {
+          wxOpenId: null,
+        };
+
+        if (search) {
+          where.OR = [
+            { username: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { firstName: { contains: search, mode: "insensitive" } },
+            { lastName: { contains: search, mode: "insensitive" } },
+          ];
+        }
+
+        if (isActive !== undefined) {
+          where.isActive = isActive;
+        }
+
+        if (roleSlug) {
+          where.roles = {
+            some: {
+              role: { slug: roleSlug },
+            },
+          };
+        }
+
+        const [users, total] = await Promise.all([
+          ctx.prisma.user.findMany({
+            where,
+            skip,
+            take: pageSize,
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              isActive: true,
+              createdAt: true,
+              lastLoginAt: true,
+              roles: {
+                select: {
+                  role: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                      level: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          ctx.prisma.user.count({ where }),
+        ]);
+
+        return {
+          items: users.map((user) => ({
+            ...user,
+            roles: user.roles.map((r) => r.role),
+          })),
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        };
+      }),
+
+    // Create admin user with default admin role
+    createAdminUser: permissionProcedure("user", "create")
+      .input(z.object({
+        data: z.object({
+          username: z.string().min(3),
+          email: z.string().email(),
+          password: z.string().min(8),
+          firstName: z.string().optional(),
+          lastName: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { data } = input;
+
+        // Check if username or email already exists
+        const existing = await ctx.prisma.user.findFirst({
+          where: {
+            OR: [{ username: data.username }, { email: data.email }],
+          },
+        });
+
+        if (existing) {
+          throw new Error("Username or email already exists");
+        }
+
+        // Hash password
+        const passwordHash = await bcrypt.hash(data.password, 10);
+
+        // Create user with admin role
+        const adminRole = await ctx.prisma.role.findFirst({
+          where: {
+            slug: { in: ["admin", "super_admin"] },
+          },
+          orderBy: { level: "asc" },
+        });
+
+        const user = await ctx.prisma.user.create({
+          data: {
+            username: data.username,
+            email: data.email,
+            passwordHash,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            roles: adminRole
+              ? {
+                  create: {
+                    roleId: adminRole.id,
+                    assignedBy: null,
+                  },
+                }
+              : undefined,
+          },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            isActive: true,
+            createdAt: true,
+          },
+        });
+
+        return user;
+      }),
+
+    // Get handler detail with extended information
+    getHandlerDetail: publicProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: input.id },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            realName: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            wxNickname: true,
+            position: true,
+            isActive: true,
+            department: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+            createdAt: true,
+            lastLoginAt: true,
+          },
+        });
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        // Get ticket statistics by status
+        const ticketsByStatus = await ctx.prisma.ticket.groupBy({
+          by: ["status"],
+          where: { assignedId: input.id },
+          _count: true,
+        });
+
+        const stats = {
+          WAIT_ASSIGN: 0,
+          WAIT_ACCEPT: 0,
+          PROCESSING: 0,
+          COMPLETED: 0,
+          CLOSED: 0,
+        };
+
+        ticketsByStatus.forEach(item => {
+          stats[item.status as keyof typeof stats] = item._count;
+        });
+
+        // Get recent completed tickets
+        const recentCompleted = await ctx.prisma.ticket.findMany({
+          where: {
+            assignedId: input.id,
+            status: "CLOSED",
+          },
+          take: 5,
+          orderBy: { closedAt: "desc" },
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            rating: true,
+            closedAt: true,
+          },
+        });
+
+        // Get current active tickets
+        const activeTickets = await ctx.prisma.ticket.findMany({
+          where: {
+            assignedId: input.id,
+            status: { in: ["WAIT_ACCEPT", "PROCESSING"] },
+          },
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            status: true,
+            priority: true,
+            createdAt: true,
+          },
+        });
+
+        return {
+          ...user,
+          stats,
+          recentCompleted,
+          activeTickets,
+        };
+      }),
+
+    // ============================================
+    // Handler Application Procedures
+    // ============================================
+
+    // Approve handler application and assign department
+    approveHandler: permissionProcedure("user", "update")
+      .input(z.object({
+        id: z.string().min(1),
+        departmentId: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id: userId, departmentId } = input;
+
+        // Find handler role
+        const handlerRole = await ctx.prisma.role.findUnique({
+          where: { slug: "handler" },
+        });
+
+        if (!handlerRole) {
+          throw new Error("Handler role not found");
+        }
+
+        // Check if user already has handler role
+        const existingUserRole = await ctx.prisma.userRole.findUnique({
+          where: {
+            userId_roleId: {
+              userId,
+              roleId: handlerRole.id,
+            },
+          },
+        });
+
+        // Use transaction to ensure data consistency
+        await ctx.prisma.$transaction(async (tx) => {
+          // If user doesn't have handler role, add it
+          if (!existingUserRole) {
+            await tx.userRole.create({
+              data: {
+                userId,
+                roleId: handlerRole.id,
+                assignedBy: null,
+              },
+            });
+          }
+
+          // Update user status to approved
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              handlerStatus: "approved",
+              departmentId: departmentId || null,
+            },
+          });
+        });
+
+        return { success: true, message: "已批准成为办事员" };
+      }),
+
+    // Reject handler application
+    rejectHandler: permissionProcedure("user", "update")
+      .input(z.object({
+        id: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const userId = input.id;
+
+        await ctx.prisma.user.update({
+          where: { id: userId },
+          data: {
+            handlerStatus: "rejected",
+          },
+        });
+
+        return { success: true, message: "已拒绝申请" };
+      }),
   }),
   {
     // We provide our own custom CRUD implementations
     includeGetMany: false,
     includeGetOne: false,
-    includeCreateOne: false,
-    includeUpdateOne: false,
-    includeDeleteOne: false,
+    includeCreate: false,
+    includeUpdate: false,
+    includeDelete: false,
     includeDeleteMany: false,
   }
 );

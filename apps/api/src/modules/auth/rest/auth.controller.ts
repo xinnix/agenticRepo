@@ -23,7 +23,13 @@ import {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+  ) {
+    console.log('[AuthController] Constructor called');
+    console.log('[AuthController] authService:', !!authService);
+    console.log('[AuthController] authService type:', typeof authService);
+  }
 
   @Public()
   @Post('register')
@@ -34,11 +40,29 @@ export class AuthController {
     description: '用户注册成功',
   })
   async register(@Body() body: typeof RegisterSchema) {
+    console.log('register called - authService:', !!this.authService);
     // ✅ 使用 Zod schema 进行运行时验证
     const validatedData = RegisterSchema.parse(body);
 
     // 调用业务逻辑
     return this.authService.register(validatedData);
+  }
+
+  @Public()
+  @Post('wx-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '微信小程序登录' })
+  @ApiResponse({
+    status: 200,
+    description: '微信登录成功',
+  })
+  async wxLogin(@Body() body: {
+    code: string;
+    phoneCode?: string; // 手机号改为可选
+    userInfo?: { nickName: string; avatarUrl: string };
+  }) {
+    console.log('wxLogin called - authService:', !!this.authService);
+    return this.authService.wxLogin(body);
   }
 
   @Public()
@@ -81,6 +105,22 @@ export class AuthController {
     description: '未授权',
   })
   async getCurrentUser(@CurrentUser() user: any) {
+    return this.authService.getCurrentUser(user.id);
+  }
+
+  @Post('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户信息 (POST 兼容)' })
+  @ApiResponse({
+    status: 200,
+    description: '用户信息',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '未授权',
+  })
+  async getCurrentUserPost(@CurrentUser() user: any) {
     return this.authService.getCurrentUser(user.id);
   }
 

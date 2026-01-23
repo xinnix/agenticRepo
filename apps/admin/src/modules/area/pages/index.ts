@@ -1,0 +1,1 @@
+export { AreaListPage } from './AreaListPage';
