@@ -17,7 +17,6 @@ import { AdminUserListPage } from "./modules/admin-user";
 import { RoleListPage, RoleDetailPage } from "./modules/role";
 import { CategoryListPage } from "./modules/category";
 import { TicketListPage, TicketDetailPage } from "./modules/ticket";
-import { StatisticsPage } from "./modules/statistics";
 import { DepartmentListPage } from "./modules/department";
 import { AreaListPage } from "./modules/area";
 import { HandlerListPage, HandlerDetailPage } from "./modules/handler";
@@ -90,10 +89,6 @@ function App() {
                   list: "/tickets",
                 },
                 {
-                  name: "statistics",
-                  list: "/statistics",
-                },
-                {
                   name: "department",
                   list: "/departments",
                 },
@@ -121,7 +116,6 @@ function App() {
                   <Route path="categories" element={<CategoryListPage />} />
                   <Route path="tickets" element={<TicketListPage />} />
                   <Route path="tickets/:id" element={<TicketDetailPage />} />
-                  <Route path="statistics" element={<StatisticsPage />} />
                   <Route path="departments" element={<DepartmentListPage />} />
                   <Route path="areas" element={<AreaListPage />} />
                   <Route path="handlers" element={<HandlerListPage />} />

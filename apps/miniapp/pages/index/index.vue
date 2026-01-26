@@ -1,14 +1,13 @@
 <template>
-  <view class="min-h-screen bg-nordic-bg-page flex items-center justify-center bg-texture-dots">
-    <!-- 加载中状态 -->
+  <view class="min-h-screen bg-page flex items-center justify-center">
+    <!-- 极简风格加载状态 -->
     <view v-if="loading" class="flex flex-col items-center animate-fade-in-up">
-      <!-- 有机风格加载动画 -->
-      <view class="loading-container">
-        <view class="loading-organic"></view>
-        <view class="loading-organic loading-organic-delay"></view>
-        <view class="loading-organic loading-organic-delay-2"></view>
+      <!-- 极简Logo/标题 -->
+      <text class="hero-text">反馈</text>
+      <!-- 线性加载条 -->
+      <view class="loading-bar">
+        <view class="loading-progress"></view>
       </view>
-      <text class="loading-text">加载中...</text>
     </view>
   </view>
 </template>
@@ -42,48 +41,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.loading-container {
-  position: relative;
-  width: 120rpx;
-  height: 120rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.hero-text {
+  font-size: 64rpx;
+  font-weight: 200;
+  letter-spacing: 16rpx;
+  color: #000000;
 }
 
-.loading-organic {
-  position: absolute;
-  width: 24rpx;
-  height: 24rpx;
-  background: linear-gradient(135deg, #C67B5C 0%, #A85D3E 100%);
-  border-radius: 50%;
-  animation: organic-bounce 1.4s ease-in-out infinite;
+.loading-bar {
+  width: 200rpx;
+  height: 2rpx;
+  background: #E5E5E5;
+  margin-top: 48rpx;
 }
 
-.loading-organic-delay {
-  animation-delay: 0.2s;
+.loading-progress {
+  height: 100%;
+  background: #000000;
+  animation: linear-loading 1.5s ease-in-out infinite;
 }
 
-.loading-organic-delay-2 {
-  animation-delay: 0.4s;
-}
-
-@keyframes organic-bounce {
-  0%, 80%, 100% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-.loading-text {
-  margin-top: 40rpx;
-  font-size: 28rpx;
-  color: var(--nordic-text-secondary);
-  font-weight: 500;
-  letter-spacing: 2rpx;
+@keyframes linear-loading {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
 }
 </style>

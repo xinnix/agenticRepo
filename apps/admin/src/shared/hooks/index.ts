@@ -1,2 +1,1 @@
-// Shared hooks will be added here
-export {};
+export * from "./useTrpcQuery";

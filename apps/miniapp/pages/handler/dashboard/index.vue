@@ -1,105 +1,78 @@
 <template>
   <PageLayout>
-    <view class="min-h-screen bg-nordic-bg-page p-nordic-6">
-      <!-- 北欧风格用户信息卡片 -->
-      <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6 flex items-center gap-6">
-        <image class="w-25 h-25 rounded-full border-4" style="border-color: rgba(123, 158, 168, 0.2)"
-          :src="userStore.avatar" />
-        <view class="flex-1 flex flex-col">
-          <text class="text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-2">{{ userStore.displayName
-            }}</text>
-          <text class="text-nordic-base text-nordic-text-secondary">{{ roleName }}</text>
+    <view class="min-h-screen bg-page px-xl py-xl">
+      <!-- 极简用户信息卡片 -->
+      <view class="user-card mb-xl">
+        <image class="user-avatar" :src="userStore.avatar" />
+        <view class="flex-1">
+          <text class="user-name">{{ userStore.displayName }}</text>
+          <text class="user-role">{{ roleName }}</text>
         </view>
       </view>
 
-      <!-- 北欧风格统计卡片 -->
-      <view class="grid grid-cols-2 gap-nordic-3 mb-nordic-6">
-        <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 relative nordic-card-hover"
-          @tap="goToTasks('pending')">
-          <text class="block text-5xl font-bold text-nordic-text-primary mb-nordic-2">{{ stats.pendingCount || 0
-            }}</text>
-          <text class="block text-nordic-base text-nordic-text-secondary mb-nordic-4">待处理</text>
-          <view
-            class="absolute top-nordic-4 right-nordic-4 px-nordic-3 py-1 rounded-full text-nordic-xs font-medium bg-nordic-accent-rose text-nordic-bg-card">
-            待接单
-          </view>
+      <!-- 极简统计卡片 - 超大数字 -->
+      <view class="stats-grid mb-xl">
+        <view class="stat-card" @tap="goToTasks('pending')">
+          <text class="stat-number">{{ stats.pendingCount || 0 }}</text>
+          <text class="stat-label">待处理</text>
+          <view class="stat-badge">待接单</view>
         </view>
 
-        <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 relative nordic-card-hover"
-          @tap="goToTasks('processing')">
-          <text class="block text-5xl font-bold text-nordic-text-primary mb-nordic-2">{{ stats.processingCount || 0
-            }}</text>
-          <text class="block text-nordic-base text-nordic-text-secondary mb-nordic-4">处理中</text>
-          <view
-            class="absolute top-nordic-4 right-nordic-4 px-nordic-3 py-1 rounded-full text-nordic-xs font-medium bg-primary text-nordic-bg-card">
-            进行中
-          </view>
+        <view class="stat-card" @tap="goToTasks('processing')">
+          <text class="stat-number">{{ stats.processingCount || 0 }}</text>
+          <text class="stat-label">处理中</text>
+          <view class="stat-badge">进行中</view>
         </view>
 
-        <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 relative nordic-card-hover"
-          @tap="goToTasks('completed')">
-          <text class="block text-5xl font-bold text-nordic-text-primary mb-nordic-2">{{ stats.todayCompleted || 0
-            }}</text>
-          <text class="block text-nordic-base text-nordic-text-secondary mb-nordic-4">今日完工</text>
-          <view
-            class="absolute top-nordic-4 right-nordic-4 px-nordic-3 py-1 rounded-full text-nordic-xs font-medium bg-nordic-accent-sage text-nordic-bg-card">
-            已完成
-          </view>
+        <view class="stat-card" @tap="goToTasks('completed')">
+          <text class="stat-number">{{ stats.todayCompleted || 0 }}</text>
+          <text class="stat-label">今日完工</text>
+          <view class="stat-badge">已完成</view>
         </view>
 
-        <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 relative">
-          <text class="block text-5xl font-bold text-nordic-text-primary mb-nordic-2">{{ stats.averageRating?.toFixed(1)
-            || '0.0' }}</text>
-          <text class="block text-nordic-base text-nordic-text-secondary mb-nordic-4">平均评分</text>
-          <view
-            class="absolute top-nordic-4 right-nordic-4 px-nordic-3 py-1 rounded-full text-nordic-xs font-medium bg-nordic-accent-sand text-nordic-bg-card">
-            ⭐
-          </view>
+        <view class="stat-card">
+          <text class="stat-number">{{ stats.averageRating?.toFixed(1) || '0.0' }}</text>
+          <text class="stat-label">平均评分</text>
+          <view class="stat-badge">★</view>
         </view>
       </view>
 
-      <!-- 北欧风格快捷操作 -->
-      <view class="flex gap-nordic-3 mb-nordic-6">
-        <view
-          class="flex-1 bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 flex flex-col items-center gap-nordic-3 nordic-card-hover"
-          @tap="goToPool">
-          <text class="text-5xl">📋</text>
-          <text class="text-nordic-base text-nordic-text-primary">待接单池</text>
+      <!-- 极简快捷操作 -->
+      <view class="flex gap-md mb-xl">
+        <view class="action-card flex-1" @tap="goToPool">
+          <text class="action-icon">📋</text>
+          <text class="action-label">待接单池</text>
         </view>
 
-        <view
-          class="flex-1 bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 flex flex-col items-center gap-nordic-3 nordic-card-hover"
-          @tap="goToTasks('all')">
-          <text class="text-5xl">📝</text>
-          <text class="text-nordic-base text-nordic-text-primary">我的任务</text>
+        <view class="action-card flex-1" @tap="goToTasks('all')">
+          <text class="action-icon">📝</text>
+          <text class="action-label">我的任务</text>
         </view>
       </view>
 
-      <!-- 北欧风格最近工单 -->
-      <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6">
-        <view class="flex justify-between items-center mb-nordic-4">
-          <text class="text-nordic-h3 font-medium text-nordic-text-primary">最近工单</text>
-          <text class="text-nordic-base text-primary" @tap="goToTasks('all')">查看全部 →</text>
+      <!-- 最近工单 -->
+      <view class="recent-section">
+        <view class="flex justify-between items-center mb-md">
+          <text class="section-title">最近工单</text>
+          <text class="section-link" @tap="goToTasks('all')">查看全部 →</text>
         </view>
 
         <scroll-view class="max-h-150" scroll-y v-if="recentTickets.length > 0">
-          <view v-for="ticket in recentTickets" :key="ticket.id" class="py-nordic-4 border-b border-nordic-border"
-            @tap="goToDetail(ticket.id)">
-            <view class="flex justify-between items-center mb-nordic-3">
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.ticketNumber }}</text>
-              <view class="px-nordic-3 py-1 rounded-full text-nordic-xs font-medium nordic-tag"
-                :class="statusTagClass(ticket.status)">
+          <view v-for="ticket in recentTickets" :key="ticket.id" class="ticket-item" @tap="goToDetail(ticket.id)">
+            <view class="flex justify-between items-center mb-sm">
+              <text class="ticket-number">{{ ticket.ticketNumber }}</text>
+              <view :class="['status-badge-mini', getStatusClass(ticket.status)]">
                 {{ TICKET_STATUS_TEXT[ticket.status] }}
               </view>
             </view>
-            <text class="block text-nordic-base text-nordic-text-primary mb-nordic-2">{{ ticket.title }}</text>
-            <text class="text-nordic-xs text-nordic-text-tertiary">{{ formatTime(ticket.createdAt) }}</text>
+            <text class="ticket-title">{{ ticket.title }}</text>
+            <text class="ticket-time">{{ formatTime(ticket.createdAt) }}</text>
           </view>
         </scroll-view>
 
-        <view v-else class="nordic-empty">
-          <text class="text-6xl mb-nordic-3">📭</text>
-          <text class="text-nordic-base text-nordic-text-secondary">暂无工单</text>
+        <view v-else class="empty-state">
+          <text class="empty-icon">📭</text>
+          <text class="empty-text">暂无工单</text>
         </view>
       </view>
     </view>
@@ -114,11 +87,11 @@ import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
 import PageLayout from '@/components/PageLayout.vue';
 import { useUserStore, useTicketStore } from '@/store';
 import * as statisticsApi from '@/api/statistics';
-import { TICKET_STATUS_TEXT, TicketStatus, type Ticket } from '@/api/types';
+import { TICKET_STATUS_TEXT, type Ticket } from '@/api/types';
 
 const userStore = useUserStore();
 const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();;
+const { updateTabBarSelected } = useTabBarUpdate();
 const ticketStore = useTicketStore();
 
 // 统计数据
@@ -139,14 +112,14 @@ const roleName = computed(() => {
   return '普通用户';
 });
 
-// 状态标签样式 - 北欧风格
-function statusTagClass(status: string) {
+// 状态样式
+function getStatusClass(status: string): string {
   const statusMap: Record<string, string> = {
-    'WAIT_ACCEPT': 'nordic-tag-primary',
-    'PROCESSING': 'nordic-tag-primary',
-    'COMPLETED': 'nordic-tag-success',
+    'WAIT_ACCEPT': 'status-wait',
+    'PROCESSING': 'status-processing',
+    'COMPLETED': 'status-completed',
   };
-  return statusMap[status] || 'bg-nordic-bg-input text-nordic-text-tertiary';
+  return statusMap[status] || 'status-default';
 }
 
 /**
@@ -232,3 +205,182 @@ onShow(() => {
   loadRecentTickets();
 });
 </script>
+
+<style scoped>
+/* 用户卡片 */
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 32rpx;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+}
+
+.user-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: var(--radius-sm);
+}
+
+.user-name {
+  display: block;
+  font-size: var(--text-title);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8rpx;
+}
+
+.user-role {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* 统计卡片网格 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.stat-card {
+  padding: 32rpx;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+  position: relative;
+}
+
+.stat-number {
+  display: block;
+  font-size: var(--text-huge);
+  font-weight: 200;
+  color: var(--color-black);
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  display: block;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  margin-bottom: 16rpx;
+}
+
+.stat-badge {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  padding: 6rpx 12rpx;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-size: var(--text-tiny);
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
+}
+
+/* 快捷操作 */
+.action-card {
+  padding: 32rpx;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.action-icon {
+  font-size: 48rpx;
+}
+
+.action-label {
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+/* 最近工单 */
+.recent-section {
+  padding: 32rpx 0;
+}
+
+.section-title {
+  font-size: var(--text-headline);
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.section-link {
+  font-size: var(--text-body);
+  color: var(--color-black);
+}
+
+.ticket-item {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.ticket-number {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  letter-spacing: 1rpx;
+}
+
+.ticket-title {
+  display: block;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  margin-bottom: 8rpx;
+}
+
+.ticket-time {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+}
+
+.status-badge-mini {
+  font-size: var(--text-tiny);
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
+  padding: 4rpx 8rpx;
+  font-weight: 500;
+}
+
+.status-wait {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.status-processing {
+  background: var(--bg-card);
+  color: var(--color-black);
+  border: 1rpx solid var(--border);
+}
+
+.status-completed {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.status-default {
+  background: var(--bg-subtle);
+  color: var(--text-tertiary);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+</style>

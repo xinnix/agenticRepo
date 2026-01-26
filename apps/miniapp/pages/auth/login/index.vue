@@ -1,64 +1,56 @@
 <template>
-  <view class="min-h-screen bg-nordic-bg-page flex flex-col items-center justify-center px-6">
-    <!-- Logo 区域 -->
-    <view class="flex flex-col items-center mb-8">
-      <view class="w-16 h-16 rounded-2xl bg-primary-bg flex items-center justify-center mb-4 shadow-nordic-sm">
-        <text class="text-3xl">📦</text>
-      </view>
-      <text class="text-nordic-h3 font-bold text-nordic-text-primary mb-1">后勤反馈系统</text>
-      <text class="text-nordic-sm text-nordic-text-secondary">企业员工专属平台</text>
+  <view class="min-h-screen bg-page flex flex-col items-center justify-center px-xl">
+    <!-- 极简Logo区域 -->
+    <view class="flex flex-col items-center mb-2xl">
+      <text class="logo-title">反馈系统</text>
+      <text class="logo-subtitle">企业员工专属平台</text>
     </view>
 
-    <!-- 登录卡片 -->
-    <view class="w-full max-w-sm bg-nordic-bg-card rounded-2xl shadow-nordic-sm p-4">
+    <!-- 极简登录卡片 -->
+    <view class="w-full login-card animate-fade-in-up">
       <!-- 微信授权登录按钮 -->
       <button
-        class="w-full h-14 bg-primary text-white rounded-xl font-semibold flex items-center justify-center shadow-nordic-sm"
+        class="minimal-btn-primary w-full"
         open-type="getUserInfo"
         @getuserinfo="onGetUserInfo"
         :loading="loading"
       >
-        <text class="mr-3 text-xl">💬</text>
-        <text class="text-nordic-base">微信一键登录</text>
+        微信一键登录
       </button>
 
       <!-- 用户信息显示 -->
-      <view v-if="userInfo" class="flex flex-col items-center pt-3 border-t border-nordic-border mt-3">
+      <view v-if="userInfo" class="user-info-section">
         <image
           v-if="userInfo.avatarUrl"
           :src="userInfo.avatarUrl"
-          class="w-12 h-12 rounded-full mb-2"
+          class="user-avatar"
         />
-        <text class="text-nordic-base text-nordic-text-primary mb-1">{{ userInfo.nickName }}</text>
-        <text class="text-nordic-xs text-nordic-text-tertiary">正在登录...</text>
+        <text class="user-name">{{ userInfo.nickName }}</text>
+        <text class="user-status">正在登录...</text>
       </view>
     </view>
 
     <!-- 协议 -->
-    <view class="mt-6 px-2">
-      <view class="flex items-start gap-3">
-        <view class="w-5 h-5 rounded border-2 border-nordic-border mt-0.5 flex-shrink-0"></view>
-        <text class="text-nordic-xs text-nordic-text-secondary leading-relaxed">
+    <view class="mt-xl px-md">
+      <view class="flex items-start gap-md">
+        <view class="checkbox"></view>
+        <text class="agreement-text">
           我已阅读并同意
-          <text class="text-primary font-medium">《用户协议》</text>
+          <text class="agreement-link">《用户协议》</text>
           与
-          <text class="text-primary font-medium">《隐私政策》</text>
+          <text class="agreement-link">《隐私政策》</text>
         </text>
       </view>
     </view>
 
     <!-- 其他登录方式 -->
-    <view class="mt-6">
-      <button class="text-nordic-xs text-nordic-text-tertiary font-medium">
-        手机号验证码登录
-      </button>
+    <view class="mt-lg">
+      <button class="other-login-btn">手机号验证码登录</button>
     </view>
 
     <!-- 版本信息 -->
-    <view class="mt-8 mb-4">
-      <text class="text-nordic-xs text-nordic-text-tertiary tracking-wide">
-        后勤反馈系统 v2.4.0
-      </text>
+    <view class="mt-xl mb-lg">
+      <text class="version-text">后勤反馈系统 v2.4.0</text>
     </view>
   </view>
 </template>
@@ -120,3 +112,87 @@ async function onGetUserInfo(e: any) {
   }
 }
 </script>
+
+<style scoped>
+.logo-title {
+  font-size: var(--text-hero);
+  font-weight: 200;
+  letter-spacing: 8rpx;
+  color: var(--color-black);
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.logo-subtitle {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  letter-spacing: 2rpx);
+}
+
+.login-card {
+  padding: 48rpx;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+}
+
+.user-info-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 32rpx;
+  border-top: 1rpx solid var(--border);
+  margin-top: 32rpx;
+}
+
+.user-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16rpx;
+}
+
+.user-name {
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.user-status {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 1rpx solid var(--border);
+  flex-shrink: 0;
+  margin-top: 4rpx;
+}
+
+.agreement-text {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.agreement-link {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.other-login-btn {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+  font-weight: 400;
+  padding: 0;
+}
+
+.version-text {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  letter-spacing: 2rpx;
+}
+</style>

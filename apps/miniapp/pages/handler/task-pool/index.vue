@@ -1,25 +1,29 @@
 <template>
   <PageLayout>
-    <view class="min-h-screen bg-nordic-bg-page flex flex-col bg-texture-dots">
-      <!-- 有机风格筛选栏 -->
-      <view class="bg-nordic-bg-card p-nordic-6 flex gap-nordic-3 border-b border-nordic-border-subtle">
-        <picker mode="selector" :range="categories" range-key="name" @change="onCategoryChange">
-          <view class="flex-1 h-16 bg-nordic-bg-input rounded-nordic-lg flex items-center justify-center nordic-button-animate"
-            :class="filter.categoryId ? 'bg-primary-bg text-primary border border-nordic-border' : ''">
-            <text class="text-nordic-base">{{ selectedCategory }}</text>
-          </view>
-        </picker>
+    <view class="min-h-screen bg-page flex flex-col">
+      <!-- 极简筛选栏 -->
+      <view class="px-xl py-md border-b">
+        <view class="flex gap-md">
+          <picker mode="selector" :range="categories" range-key="name" @change="onCategoryChange">
+            <view :class="['filter-item', { active: filter.categoryId }]">
+              <text class="filter-text">{{ selectedCategory }}</text>
+            </view>
+          </picker>
 
-        <picker mode="selector" :range="priorities" range-key="label" @change="onPriorityChange">
-          <view class="flex-1 h-16 bg-nordic-bg-input rounded-nordic-lg flex items-center justify-center nordic-button-animate"
-            :class="filter.priority ? 'bg-primary-bg text-primary border border-nordic-border' : ''">
-            <text class="text-nordic-base">{{ selectedPriority }}</text>
-          </view>
-        </picker>
+          <picker mode="selector" :range="priorities" range-key="label" @change="onPriorityChange">
+            <view :class="['filter-item', { active: filter.priority }]">
+              <text class="filter-text">{{ selectedPriority }}</text>
+            </view>
+          </picker>
+        </view>
       </view>
 
       <!-- 工单列表 -->
-      <scroll-view class="flex-1 p-nordic-6" scroll-y @scrolltolower="loadMore">
+      <scroll-view
+        class="flex-1"
+        scroll-y
+        @scrolltolower="loadMore"
+      >
         <!-- 空状态 -->
         <u-empty
           v-if="ticketList.length === 0 && !loading"
@@ -27,71 +31,73 @@
           text="暂无待接工单"
         />
 
-        <!-- 工单卡片 - 有机现代风格 -->
-        <view v-for="(ticket, index) in ticketList" :key="ticket.id"
-          class="bg-nordic-bg-card rounded-nordic-2xl shadow-nordic-md p-nordic-5 mb-nordic-5 nordic-card-hover card-organic animate-fade-in-up"
-          :style="{ animationDelay: `${(index % 5) * 0.05}s` }">
-          <!-- 卡片头部 -->
-          <view class="flex justify-between items-center mb-nordic-3" @tap="goToDetail(ticket.id)">
-            <view class="flex items-center gap-2">
-              <view class="w-1 h-4 rounded-full" :class="getPriorityDotColor(ticket.priority)"></view>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.ticketNumber }}</text>
+        <!-- 极简工单列表 -->
+        <view
+          v-for="(ticket, index) in ticketList"
+          :key="ticket.id"
+          :class="['ticket-list-item animate-fade-in-up', { 'pl-xl pr-xl': true }]"
+          :style="{ animationDelay: `${(index % 5) * 0.05}s` }"
+        >
+          <!-- 内容区域 -->
+          <view @tap="goToDetail(ticket.id)">
+            <!-- 优先级行 -->
+            <view class="ticket-status mb-sm">
+              <view class="flex items-center gap-xs">
+                <view class="priority-dot" :class="ticket.priority === 'URGENT' ? 'urgent' : ''"></view>
+                <text class="ticket-number">{{ ticket.ticketNumber }}</text>
+              </view>
+              <view :class="['priority-badge', getPriorityClass(ticket.priority)]">
+                {{ getPriorityText(ticket.priority) }}
+              </view>
             </view>
-            <view class="nordic-tag" :class="getPriorityTagClass(ticket.priority)">
-              {{ getPriorityText(ticket.priority) }}
-            </view>
-          </view>
 
-          <!-- 卡片内容 -->
-          <view class="mb-nordic-4" @tap="goToDetail(ticket.id)">
-            <text class="block text-nordic-lg font-semibold text-nordic-text-primary mb-nordic-2">{{ ticket.title
-              }}</text>
-            <text class="block text-nordic-base text-nordic-text-secondary leading-relaxed line-clamp-2">{{
-              ticket.description }}</text>
+            <!-- 标题和描述 -->
+            <text class="ticket-title mb-sm">{{ ticket.title }}</text>
+            <text class="ticket-description mb-md">{{ ticket.description }}</text>
 
             <!-- 附件预览 -->
-            <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-2 mt-nordic-3">
-              <view v-for="(img, i) in ticket.attachments.slice(0, 3)" :key="i"
-                class="relative" style="width: 80rpx; height: 80rpx;">
-                <image :src="img.url" class="w-full h-full rounded-nordic-md" mode="aspectFill" />
+            <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-sm mb-md">
+              <view
+                v-for="(img, i) in ticket.attachments.slice(0, 3)"
+                :key="i"
+                class="attachment-preview"
+              >
+                <image
+                  :src="img.url"
+                  class="w-full h-full"
+                  mode="aspectFill"
+                />
               </view>
             </view>
-          </view>
 
-          <!-- 卡片底部 -->
-          <view class="flex gap-6 mb-nordic-4" @tap="goToDetail(ticket.id)">
-            <view class="flex items-center gap-2">
-              <view class="w-5 h-5 flex items-center justify-center">
-                <text class="text-nordic-sm text-nordic-accent-sage">◆</text>
+            <!-- 元信息 -->
+            <view class="flex gap-lg mb-md">
+              <view class="flex items-center gap-xs">
+                <text class="meta-icon">◆</text>
+                <text class="meta-text">{{ ticket.category?.name }}</text>
               </view>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.category?.name }}</text>
-            </view>
-            <view class="flex items-center gap-2">
-              <view class="w-5 h-5 flex items-center justify-center">
-                <text class="text-nordic-sm text-nordic-accent-sand">◷</text>
+              <view class="flex items-center gap-xs">
+                <text class="meta-icon">◷</text>
+                <text class="meta-text">{{ formatTime(ticket.createdAt) }}</text>
               </view>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ formatTime(ticket.createdAt) }}</text>
             </view>
           </view>
 
           <!-- 接单按钮 -->
-          <u-button
-            type="primary"
-            size="large"
-            @click.stop="handleAccept(ticket.id)"
-          >
+          <button class="accept-btn" @tap.stop="handleAccept(ticket.id)">
             立即接单
-          </u-button>
+          </button>
         </view>
 
         <!-- 加载状态 -->
-        <view v-if="loading" class="nordic-loading">
-          <text class="text-nordic-base text-nordic-text-secondary">加载中...</text>
+        <view v-if="loading" class="flex justify-center py-xl">
+          <u-loading-icon mode="circle" />
+          <text class="ml-sm text-body text-secondary">加载中...</text>
         </view>
 
         <!-- 没有更多 -->
-        <view v-if="!hasMore && ticketList.length > 0" class="nordic-loading">
-          <text class="text-nordic-base text-nordic-text-secondary">没有更多了</text>
+        <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-xl">
+          <text class="text-caption text-secondary">没有更多了</text>
         </view>
       </scroll-view>
     </view>
@@ -106,16 +112,11 @@ import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
 import PageLayout from '@/components/PageLayout.vue';
 import { useTicketStore } from '@/store';
 import { Priority, type Ticket } from '@/api/types';
-import {
-  getPriorityText,
-  getPriorityTagType,
-  getPriorityTagPlain,
-} from '@/utils/tag-helpers';
 import * as categoryApi from '@/api/category';
 
 const ticketStore = useTicketStore();
 const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();;
+const { updateTabBarSelected } = useTabBarUpdate();
 
 // 筛选条件
 const filter = ref({
@@ -247,6 +248,28 @@ function goToDetail(id: string) {
 }
 
 /**
+ * 获取优先级文本
+ */
+function getPriorityText(priority: string): string {
+  const priorityTexts: Record<string, string> = {
+    'URGENT': '紧急',
+    'NORMAL': '普通',
+  };
+  return priorityTexts[priority] || '普通';
+}
+
+/**
+ * 获取优先级样式
+ */
+function getPriorityClass(priority: string): string {
+  const priorityClasses: Record<string, string> = {
+    'URGENT': 'priority-urgent',
+    'NORMAL': 'priority-normal',
+  };
+  return priorityClasses[priority] || 'priority-normal';
+}
+
+/**
  * 格式化时间
  */
 function formatTime(dateStr: string) {
@@ -270,38 +293,115 @@ onMounted(() => {
   loadTickets(true);
 });
 
-/**
- * 获取优先级圆点颜色
- */
-function getPriorityDotColor(priority: string): string {
-  const dotColors: Record<string, string> = {
-    'URGENT': 'bg-nordic-error',
-    'NORMAL': 'bg-nordic-accent-sage',
-  };
-  return dotColors[priority] || 'bg-nordic-text-tertiary';
-}
-
-/**
- * 获取优先级标签样式
- */
-function getPriorityTagClass(priority: string): string {
-  const tagClasses: Record<string, string> = {
-    'URGENT': 'nordic-tag-error',
-    'NORMAL': 'nordic-tag-sage',
-  };
-  return tagClasses[priority] || 'nordic-tag-outline';
-}
-
 onShow(() => {
   refresh();
 });
 </script>
 
 <style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+/* 筛选栏 */
+.filter-item {
+  flex: 1;
+  padding: 16rpx;
+  background: var(--bg-subtle);
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.filter-item.active {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+/* 工单列表项 */
+.ticket-list-item {
+  padding: 48rpx 32rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.ticket-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.priority-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: var(--color-black);
+}
+
+.priority-dot.urgent {
+  background: var(--color-black);
+}
+
+.ticket-number {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  letter-spacing: 1rpx);
+}
+
+.priority-badge {
+  font-size: var(--text-tiny);
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
+  padding: 6rpx 12rpx;
+  font-weight: 500;
+}
+
+.priority-normal {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.priority-urgent {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.ticket-title {
+  display: block;
+  font-size: var(--text-title);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ticket-description {
+  display: block;
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.attachment-preview {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: var(--radius-xs);
   overflow: hidden;
+}
+
+.meta-icon {
+  font-size: 16rpx;
+  color: var(--text-tertiary);
+}
+
+.meta-text {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+}
+
+/* 接单按钮 */
+.accept-btn {
+  width: 100%;
+  padding: 24rpx;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-size: var(--text-body);
+  font-weight: 400;
+  letter-spacing: 2rpx;
+  text-align: center;
+  border: none;
 }
 </style>

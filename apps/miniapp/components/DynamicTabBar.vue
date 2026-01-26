@@ -61,12 +61,12 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showBadge: true,
-  activeColor: '#C67B5C',
-  inactiveColor: '#A8A49C',
+  activeColor: '#000000',
+  inactiveColor: '#A3A3A3',
   animation: true,
   safeArea: true,
-  backgroundColor: '#FFFEFB',
-  borderColor: '#EBE8E1',
+  backgroundColor: '#FFFFFF',
+  borderColor: '#E5E5E5',
   height: '100rpx'
 })
 
@@ -103,8 +103,6 @@ const containerStyle = computed(() => {
 // 方法
 function handleTabTap(tab: TabItem) {
   console.log('[DynamicTabBar] 点击Tab:', tab.id, tab.text)
-
-  // 使用官方推荐的Tab处理方式
   handleTabBarTap(tab)
 }
 
@@ -146,7 +144,7 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   left: 0;
   right: 0;
   z-index: 999;
-  box-shadow: 0 -4rpx 16rpx rgba(44, 42, 39, 0.08);
+  box-shadow: 0 -1rpx 0 #E5E5E5;
   pointer-events: auto;
 }
 
@@ -166,13 +164,12 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   justify-content: center;
   position: relative;
   padding: 10rpx 0;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   pointer-events: auto;
 }
 
 .tab-item:active {
   opacity: 0.7;
-  transform: scale(0.96);
 }
 
 .badge-container {
@@ -187,9 +184,9 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   right: -8rpx;
   width: 16rpx;
   height: 16rpx;
-  background-color: #C47878;
-  border-radius: 50%;
-  border: 2rpx solid #FFFEFB;
+  background-color: #000000;
+  border-radius: 0;
+  border: 2rpx solid #FFFFFF;
   z-index: 1;
 }
 
@@ -199,10 +196,10 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   right: -12rpx;
   min-width: 32rpx;
   height: 32rpx;
-  background-color: #C47878;
-  color: #FFFEFB;
-  border-radius: 16rpx;
-  border: 2rpx solid #FFFEFB;
+  background-color: #000000;
+  color: #FFFFFF;
+  border-radius: 0;
+  border: 2rpx solid #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,7 +220,7 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   font-size: 48rpx;
   line-height: 48rpx;
   margin-bottom: 4rpx;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   text-align: center;
   width: 48rpx;
   height: 48rpx;
@@ -232,18 +229,18 @@ function getTabIcon(tabId: string, isActive: boolean): string {
 .tab-text {
   font-size: 20rpx;
   line-height: 1;
-  color: #A8A49C;
+  color: #A3A3A3;
   font-weight: 400;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   letter-spacing: 0.5rpx;
 }
 
 .tab-text.active {
-  color: #C67B5C;
+  color: #000000;
   font-weight: 600;
 }
 
-/* 活跃状态指示器 - 有机风格 */
+/* 活跃状态指示器 - 极简风格 */
 .tab-item.active::after {
   content: '';
   position: absolute;
@@ -251,12 +248,11 @@ function getTabIcon(tabId: string, isActive: boolean): string {
   left: 50%;
   transform: translateX(-50%);
   width: 48rpx;
-  height: 6rpx;
-  background: linear-gradient(135deg, #C67B5C 0%, #A85D3E 100%);
-  border-radius: 6rpx;
+  height: 2rpx;
+  background: #000000;
 }
 
 .tab-item.active .tab-icon-emoji {
-  transform: translateY(-4rpx);
+  transform: translateY(-2rpx);
 }
 </style>

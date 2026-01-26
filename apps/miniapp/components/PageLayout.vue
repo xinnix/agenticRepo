@@ -47,8 +47,8 @@ interface Props {
 withDefaults(defineProps<Props>(), {
   showTabBar: true,
   showBadge: true,
-  activeColor: '#007AFF',
-  inactiveColor: '#8E8E93',
+  activeColor: '#000000',
+  inactiveColor: '#A3A3A3',
   animation: true,
   safeArea: true,
   backgroundColor: '#FFFFFF',
@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), {
 <style scoped>
 .page-layout {
   min-height: 100%;
-  background-color: #F5F3EF;
+  background-color: #FFFFFF;
   position: relative;
 }
 
@@ -105,10 +105,5 @@ withDefaults(defineProps<Props>(), {
 
 .tabbar-container .dynamic-tabbar-container {
   pointer-events: auto; /* 子组件响应事件 */
-}
-
-/* 通用TabBar高度设置 */
-.page-content.has-tabbar {
-  padding-bottom: 120rpx;
 }
 </style>

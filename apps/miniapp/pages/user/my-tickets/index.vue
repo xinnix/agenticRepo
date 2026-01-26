@@ -1,144 +1,133 @@
 <template>
   <PageLayout>
-    <view class="min-h-screen bg-nordic-bg-page flex flex-col bg-texture-dots">
-    <!-- 有机风格分段控件 -->
-    <view class="bg-nordic-bg-card p-nordic-6 border-b border-nordic-border-subtle">
-      <view class="flex bg-nordic-bg-input rounded-nordic-xl p-1.5">
-        <view
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="flex-1 flex items-center justify-center py-3 rounded-nordic-lg transition-all nordic-button-animate"
-          :class="currentTab === tab.key ? 'bg-nordic-bg-card shadow-nordic-sm text-primary font-semibold' : 'text-nordic-text-secondary'"
-          @tap="switchTab(tab.key)"
-        >
-          <text class="text-nordic-sm">{{ tab.label }}</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 申请成为办事员卡片 -->
-    <view class="bg-nordic-bg-card p-nordic-6 pb-0">
-      <view class="bg-gradient-warm rounded-nordic-2xl p-nordic-5 flex items-center justify-between nordic-button-animate card-organic" @tap="goToApplyHandler">
-        <view class="flex items-center">
-          <view class="w-12 h-12 bg-white bg-opacity-20 rounded-nordic-lg flex items-center justify-center mr-3">
-            <text class="text-xl text-white">✦</text>
-          </view>
-          <view>
-            <text class="text-nordic-base font-semibold text-white block">申请成为办事员</text>
-            <text class="text-nordic-xs text-white text-opacity-80 mt-1">加入我们，提供更好的服务</text>
+    <view class="min-h-screen bg-page flex flex-col">
+      <!-- 极简分段控件 -->
+      <view class="px-xl py-md border-b">
+        <view class="tab-container">
+          <view
+            v-for="tab in tabs"
+            :key="tab.key"
+            :class="['tab-item', { active: currentTab === tab.key }]"
+            @tap="switchTab(tab.key)"
+          >
+            <text class="tab-text">{{ tab.label }}</text>
           </view>
         </view>
-        <view class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-          <text class="text-white text-sm">›</text>
+      </view>
+
+      <!-- 申请成为办事员卡片 - 极简风格 -->
+      <view class="px-xl py-md border-b">
+        <view class="apply-card" @tap="goToApplyHandler">
+          <view class="flex items-center justify-between w-full">
+            <view class="flex items-center gap-md">
+              <text class="apply-icon">◆</text>
+              <view>
+                <text class="apply-title">申请成为办事员</text>
+                <text class="apply-subtitle">加入我们，提供更好的服务</text>
+              </view>
+            </view>
+            <text class="apply-arrow">›</text>
+          </view>
         </view>
       </view>
-    </view>
 
-    <!-- 工单列表 -->
-    <scroll-view
-      class="flex-1 p-nordic-6"
-      scroll-y
-      @scrolltolower="loadMore"
-    >
-      <!-- 空状态 -->
-      <u-empty
-        v-if="ticketList.length === 0 && !loading"
-        mode="list"
-        text="暂无工单"
-      />
-
-      <!-- 工单卡片 - 有机现代风格 -->
-      <view
-        v-for="(ticket, index) in ticketList"
-        :key="ticket.id"
-        class="bg-nordic-bg-card rounded-nordic-2xl shadow-nordic-md p-nordic-5 mb-nordic-5 nordic-card-hover relative card-organic animate-fade-in-up"
-        :style="{ animationDelay: `${(index % 5) * 0.05}s` }"
-        @tap="goToDetail(ticket.id)"
+      <!-- 工单列表 -->
+      <scroll-view
+        class="flex-1"
+        scroll-y
+        @scrolltolower="loadMore"
       >
-        <!-- 卡片头部 -->
-        <view class="flex justify-between items-center mb-nordic-3">
-          <view class="flex items-center gap-2">
-            <view class="w-1 h-4 rounded-full" :class="getStatusDotColor(ticket.status)"></view>
-            <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.ticketNumber }}</text>
-          </view>
-          <view class="nordic-tag" :class="getStatusTagClass(ticket.status)">
-            {{ getStatusText(ticket.status) }}
-          </view>
-        </view>
+        <!-- 空状态 -->
+        <u-empty
+          v-if="ticketList.length === 0 && !loading"
+          mode="list"
+          text="暂无工单"
+        />
 
-        <!-- 卡片内容 -->
-        <view class="mb-nordic-4">
-          <text class="block text-nordic-lg font-semibold text-nordic-text-primary mb-nordic-2">{{ ticket.title }}</text>
-          <text class="block text-nordic-base text-nordic-text-secondary leading-relaxed line-clamp-2">{{ ticket.description }}</text>
+        <!-- 极简工单列表 -->
+        <view
+          v-for="(ticket, index) in ticketList"
+          :key="ticket.id"
+          :class="['ticket-list-item animate-fade-in-up', { 'pl-xl pr-xl': true }]"
+          :style="{ animationDelay: `${(index % 5) * 0.05}s` }"
+          @tap="goToDetail(ticket.id)"
+        >
+          <!-- 状态行 -->
+          <view class="ticket-status mb-sm">
+            <view class="flex items-center gap-xs">
+              <view class="status-dot"></view>
+              <text class="ticket-number">{{ ticket.ticketNumber }}</text>
+            </view>
+            <view :class="['status-badge', getStatusBadgeClass(ticket.status)]">
+              {{ getStatusText(ticket.status) }}
+            </view>
+          </view>
+
+          <!-- 标题 -->
+          <text class="ticket-title mb-sm">{{ ticket.title }}</text>
+          <text class="ticket-description mb-md">{{ ticket.description }}</text>
 
           <!-- 附件预览 -->
-          <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-2 mt-nordic-3">
+          <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-sm mb-md">
             <view
               v-for="(img, i) in ticket.attachments.slice(0, 3)"
               :key="i"
-              class="relative"
-              style="width: 80rpx; height: 80rpx;"
+              class="attachment-preview"
             >
               <image
                 :src="img.url"
-                class="w-full h-full rounded-nordic-md"
+                class="w-full h-full"
                 mode="aspectFill"
               />
-              <view class="absolute inset-0 bg-nordic-text-primary opacity-0 rounded-nordic-md transition-opacity"></view>
             </view>
             <view
               v-if="ticket.attachments.length > 3"
-              class="w-20 h-20 flex items-center justify-center bg-nordic-bg-input rounded-nordic-md border border-nordic-border-subtle"
+              class="attachment-more"
             >
-              <text class="text-nordic-xs text-nordic-text-tertiary font-medium">+{{ ticket.attachments.length - 3 }}</text>
+              <text class="text-tiny">+{{ ticket.attachments.length - 3 }}</text>
             </view>
+          </view>
+
+          <!-- 元信息 -->
+          <view class="flex gap-lg">
+            <view class="flex items-center gap-xs">
+              <text class="meta-icon">◆</text>
+              <text class="meta-text">{{ ticket.category?.name }}</text>
+            </view>
+            <view class="flex items-center gap-xs">
+              <text class="meta-icon">◷</text>
+              <text class="meta-text">{{ formatDate(ticket.createdAt) }}</text>
+            </view>
+          </view>
+
+          <!-- 优先级标记 -->
+          <view
+            v-if="ticket.priority === 'URGENT'"
+            class="priority-mark"
+          >
+            <text class="text-tiny font-semibold">紧急</text>
           </view>
         </view>
 
-        <!-- 卡片底部 -->
-        <view class="flex gap-6">
-          <view class="flex items-center gap-2">
-            <view class="w-5 h-5 flex items-center justify-center">
-              <text class="text-nordic-sm text-nordic-accent-sage">◆</text>
-            </view>
-            <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.category?.name }}</text>
-          </view>
-          <view class="flex items-center gap-2">
-            <view class="w-5 h-5 flex items-center justify-center">
-              <text class="text-nordic-sm text-nordic-accent-sand">◷</text>
-            </view>
-            <text class="text-nordic-xs text-nordic-text-tertiary">{{ formatDate(ticket.createdAt) }}</text>
-          </view>
+        <!-- 加载更多 -->
+        <view v-if="loading" class="flex justify-center py-xl">
+          <u-loading-icon mode="circle" />
+          <text class="ml-sm text-body text-secondary">加载中...</text>
         </view>
 
-        <!-- 优先级标记 -->
-        <view
-          v-if="ticket.priority === 'URGENT'"
-          class="absolute top-nordic-4 right-nordic-4 px-2 py-1 bg-nordic-error bg-opacity-10 rounded-nordic-sm"
-        >
-          <text class="text-nordic-xs text-nordic-error font-medium">紧急</text>
+        <!-- 没有更多 -->
+        <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-xl">
+          <text class="text-caption text-secondary">没有更多了</text>
         </view>
-      </view>
+      </scroll-view>
 
-      <!-- 加载更多 -->
-      <view v-if="loading" class="flex justify-center py-nordic-4">
-        <u-loading-icon mode="circle" />
-        <text class="ml-nordic-2 text-nordic-base text-nordic-text-secondary">加载中...</text>
+      <!-- 极简悬浮按钮 -->
+      <view
+        class="floating-btn"
+        @tap="goToSubmit"
+      >
+        <text class="floating-btn-icon">+</text>
       </view>
-
-      <!-- 没有更多 -->
-      <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-nordic-4">
-        <text class="text-nordic-base text-nordic-text-secondary">没有更多了</text>
-      </view>
-    </scroll-view>
-
-    <!-- 有机风格悬浮按钮 -->
-    <view
-      class="fixed right-10 bottom-28 w-28 h-28 bg-primary rounded-full flex items-center justify-center shadow-nordic-xl nordic-button-animate card-organic"
-      @tap="goToSubmit"
-    >
-      <text class="text-5xl text-nordic-bg-card font-light">+</text>
-    </view>
     </view>
   </PageLayout>
 </template>
@@ -150,7 +139,6 @@ import { useTicketStore } from '@/store';
 import { useTabBarStore } from '@/store/modules/tabbar';
 import PageLayout from '@/components/PageLayout.vue';
 import { TicketStatus, type Ticket } from '@/api/types';
-import { getStatusText, getStatusTagType } from '@/utils/tag-helpers';
 
 const ticketStore = useTicketStore();
 const tabBarStore = useTabBarStore();
@@ -235,7 +223,6 @@ function goToApplyHandler() {
  * 页面显示时初始化TabBar状态
  */
 onShow(() => {
-  // 设置当前Tab为'my-tickets'
   tabBarStore.setActiveTab('my-tickets');
 });
 
@@ -243,36 +230,35 @@ onShow(() => {
  * 页面挂载时初始化数据
  */
 onMounted(() => {
-  // 页面挂载时刷新数据
   refresh();
 });
 
 /**
- * 获取状态圆点颜色
+ * 获取状态徽章样式
  */
-function getStatusDotColor(status: string): string {
-  const dotColors: Record<string, string> = {
-    'WAIT_ASSIGN': 'bg-nordic-accent-sand',
-    'WAIT_ACCEPT': 'bg-nordic-accent-sky',
-    'PROCESSING': 'bg-nordic-accent-sage',
-    'COMPLETED': 'bg-nordic-success',
-    'CLOSED': 'bg-nordic-text-tertiary',
+function getStatusBadgeClass(status: string): string {
+  const badgeClasses: Record<string, string> = {
+    'WAIT_ASSIGN': 'status-wait-assign',
+    'WAIT_ACCEPT': 'status-wait-accept',
+    'PROCESSING': 'status-processing',
+    'COMPLETED': 'status-completed',
+    'CLOSED': 'status-closed',
   };
-  return dotColors[status] || 'bg-nordic-text-tertiary';
+  return badgeClasses[status] || 'status-closed';
 }
 
 /**
- * 获取状态标签样式
+ * 获取状态文本
  */
-function getStatusTagClass(status: string): string {
-  const tagClasses: Record<string, string> = {
-    'WAIT_ASSIGN': 'nordic-tag-warning',
-    'WAIT_ACCEPT': 'nordic-tag-info',
-    'PROCESSING': 'nordic-tag-sage',
-    'COMPLETED': 'nordic-tag-success',
-    'CLOSED': 'nordic-tag-outline',
+function getStatusText(status: string): string {
+  const statusTexts: Record<string, string> = {
+    'WAIT_ASSIGN': '待指派',
+    'WAIT_ACCEPT': '待接单',
+    'PROCESSING': '处理中',
+    'COMPLETED': '已完成',
+    'CLOSED': '已关闭',
   };
-  return tagClasses[status] || 'nordic-tag-outline';
+  return statusTexts[status] || '未知';
 }
 
 /**
@@ -301,22 +287,188 @@ function formatDate(dateStr: string) {
   // 格式化为 MM-DD
   return `${date.getMonth() + 1}-${date.getDate()}`;
 }
-
-onMounted(() => {
-  loadTickets(true);
-});
-
-// 页面显示时刷新
-onShow(() => {
-  refresh();
-});
 </script>
 
 <style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+/* 分段控件 */
+.tab-container {
+  display: flex;
+  background: var(--bg-subtle);
+  padding: 4rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+}
+
+.tab-item.active .tab-text {
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.tab-text {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* 申请卡片 */
+.apply-card {
+  background: var(--color-black);
+  color: var(--color-white);
+  padding: 32rpx;
+}
+
+.apply-icon {
+  font-size: 32rpx;
+}
+
+.apply-title {
+  display: block;
+  font-size: var(--text-body);
+  font-weight: 500;
+}
+
+.apply-subtitle {
+  display: block;
+  font-size: var(--text-tiny);
+  opacity: 0.8;
+  margin-top: 4rpx;
+}
+
+.apply-arrow {
+  font-size: 32rpx;
+}
+
+/* 工单列表项 */
+.ticket-list-item {
+  padding: 48rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  position: relative;
+}
+
+.ticket-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: var(--color-black);
+}
+
+.ticket-number {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  letter-spacing: 1rpx;
+}
+
+.status-badge {
+  font-size: var(--text-tiny);
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
+  padding: 6rpx 12rpx;
+  font-weight: 500;
+}
+
+.status-wait-assign {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.status-wait-accept {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.status-processing {
+  background: var(--bg-card);
+  color: var(--color-black);
+  border: 1rpx solid var(--border);
+  font-weight: 600;
+}
+
+.status-completed {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.status-closed {
+  background: var(--bg-subtle);
+  color: var(--text-tertiary);
+}
+
+.ticket-title {
+  display: block;
+  font-size: var(--text-title);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ticket-description {
+  display: block;
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.attachment-preview {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: var(--radius-xs);
   overflow: hidden;
+}
+
+.attachment-more {
+  width: 80rpx;
+  height: 80rpx;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meta-icon {
+  font-size: 16rpx;
+  color: var(--text-tertiary);
+}
+
+.meta-text {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+}
+
+.priority-mark {
+  position: absolute;
+  top: 16rpx;
+  right: 32rpx;
+  background: var(--color-black);
+  color: var(--color-white);
+  padding: 4rpx 8rpx;
+}
+
+/* 悬浮按钮 */
+.floating-btn {
+  position: fixed;
+  right: 40rpx;
+  bottom: 200rpx;
+  width: 112rpx;
+  height: 112rpx;
+  background: var(--color-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floating-btn-icon {
+  font-size: 48rpx;
+  color: var(--color-white);
+  font-weight: 200;
+  line-height: 1;
 }
 </style>

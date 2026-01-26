@@ -1,50 +1,52 @@
-/* uView Plus 主题配置 - Nordic 风格 */
+/* uView Plus 主题配置 - 现代极简主义风格 */
 /* 此文件必须在 uview-plus/index.scss 之前引入 */
 
-/* ==================== 基础颜色变量 ==================== */
-$u-main-color: #3D3A36;         /* 主文本色 */
-$u-content-color: #5A5650;      /* 内容文本色 */
-$u-tips-color: #8E8E93;         /* 提示文本色 */
-$u-light-color: #C5C5C7;        /* 浅色文本 */
-$u-border-color: #E5E4E2;       /* 边框颜色 */
-$u-bg-color: #FAF9F7;           /* 页面背景色 - 北欧米白 */
-$u-disabled-color: #C5C5C7;     /* 禁用状态 */
+/* ==================== 基础颜色变量 - 极简黑白 ==================== */
+$u-main-color: #171717;         /* 主文本色 */
+$u-content-color: #525252;      /* 内容文本色 */
+$u-tips-color: #A3A3A3;         /* 提示文本色 */
+$u-light-color: #D4D4D4;        /* 浅色文本 */
+$u-border-color: #E5E5E5;       /* 边框颜色 */
+$u-bg-color: #FFFFFF;           /* 页面背景色 - 纯白 */
+$u-disabled-color: #D4D4D4;     /* 禁用状态 */
 
-/* ==================== 主题色配置 - 北欧莫兰迪色系 ==================== */
-$u-primary: #667eea;            /* 主色 - 柔和蓝紫 */
-$u-primary-dark: #5a67d8;       /* 主色深色 */
-$u-primary-disabled: #a8b0e0;   /* 主色禁用 */
-$u-primary-light: #f0f2ff;      /* 主色浅色背景 */
+/* ==================== 主题色配置 - 极简单色 ==================== */
+$u-primary: #000000;            /* 主色 - 纯黑 */
+$u-primary-dark: #000000;       /* 主色深色 */
+$u-primary-disabled: #737373;   /* 主色禁用 */
+$u-primary-light: #F5F5F5;      /* 主色浅色背景 */
 
-$u-warning: #faad14;            /* 警告色 */
-$u-warning-dark: #d49806;       /* 警告色深色 */
-$u-warning-disabled: #f5d699;   /* 警告色禁用 */
-$u-warning-light: #fff7e6;      /* 警告色浅色背景 */
+$u-warning: #737373;            /* 警告色 - 中灰 */
+$u-warning-dark: #525252;       /* 警告色深色 */
+$u-warning-disabled: #A3A3A3;   /* 警告色禁用 */
+$u-warning-light: #FAFAFA;      /* 警告色浅色背景 */
 
-$u-success: #52c41a;            /* 成功色 */
-$u-success-dark: #3fa012;       /* 成功色深色 */
-$u-success-disabled: #a5d987;   /* 成功色禁用 */
-$u-success-light: #f6ffed;      /* 成功色浅色背景 */
+$u-success: #000000;            /* 成功色 - 纯黑 */
+$u-success-dark: #000000;       /* 成功色深色 */
+$u-success-disabled: #737373;   /* 成功色禁用 */
+$u-success-light: #F5F5F5;      /* 成功色浅色背景 */
 
-$u-error: #ff4d4f;              /* 错误色 */
-$u-error-dark: #d9363e;         /* 错误色深色 */
-$u-error-disabled: #f5a3a4;     /* 错误色禁用 */
-$u-error-light: #fff1f0;        /* 错误色浅色背景 */
+$u-error: #000000;              /* 错误色 - 纯黑 */
+$u-error-dark: #000000;         /* 错误色深色 */
+$u-error-disabled: #737373;     /* 错误色禁用 */
+$u-error-light: #F5F5F5;        /* 错误色浅色背景 */
 
-$u-info: #909399;               /* 信息色 */
-$u-info-dark: #767a82;          /* 信息色深色 */
-$u-info-disabled: #c4c6c9;      /* 信息色禁用 */
-$u-info-light: #f4f4f5;         /* 信息色浅色背景 */
+$u-info: #525252;               /* 信息色 */
+$u-info-dark: #404040;          /* 信息色深色 */
+$u-info-disabled: #A3A3A3;      /* 信息色禁用 */
+$u-info-light: #FAFAFA;         /* 信息色浅色背景 */
 
 /* ==================== 状态色映射（业务语义） ==================== */
-$u-status-wait-assign: #faad14;         /* 待指派 - 使用警告色 */
-$u-status-wait-accept: #667eea;         /* 待接单 - 使用主题色 */
-$u-status-processing: #667eea;          /* 处理中 - 使用主题色 */
-$u-status-completed: #52c41a;           /* 已完成 - 使用成功色 */
-$u-status-closed: #909399;              /* 已关闭 - 使用信息色 */
+/* 极简风格：所有状态使用黑白灰，通过形状和字重区分 */
+$u-status-wait-assign: #737373;         /* 待指派 - 中灰 */
+$u-status-wait-accept: #525252;         /* 待接单 - 深灰 */
+$u-status-processing: #000000;          /* 处理中 - 纯黑 */
+$u-status-completed: #000000;           /* 已完成 - 纯黑 */
+$u-status-closed: #A3A3A3;              /* 已关闭 - 浅灰 */
 
 /* ==================== 优先级色映射 ==================== */
-$u-priority-low: #1890ff;               /* 低优先级 */
-$u-priority-normal: #52c41a;            /* 普通优先级 */
-$u-priority-high: #faad14;              /* 高优先级 */
-$u-priority-urgent: #ff4d4f;            /* 紧急优先级 */
+/* 极简风格：优先级用字重和大小区分，不用颜色 */
+$u-priority-low: #525252;               /* 低优先级 - 深灰 */
+$u-priority-normal: #404040;            /* 普通优先级 */
+$u-priority-high: #000000;              /* 高优先级 - 纯黑 */
+$u-priority-urgent: #000000;            /* 紧急优先级 - 纯黑 */

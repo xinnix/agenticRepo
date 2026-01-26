@@ -1,149 +1,144 @@
 <template>
   <PageLayout>
-    <view class="min-h-screen bg-nordic-bg-page p-nordic-6 bg-texture-dots">
-    <view class="bg-nordic-bg-card rounded-nordic-2xl shadow-nordic-md p-nordic-6 card-organic animate-fade-in-up">
-      <!-- 分类选择 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">问题分类</text>
-          <view class="w-1 h-1 rounded-full bg-nordic-error ml-2"></view>
-        </view>
-        <u-input
-          :value="selectedCategoryName"
-          placeholder="请选择问题分类"
-          :border="false"
-          :custom-style="{
-            background: '#EBE8E1',
-            borderRadius: '16rpx',
-            height: '80rpx',
-          }"
-          :disabled="true"
-          @click="showCategoryPicker = true"
-        />
-        <u-picker
-          :show="showCategoryPicker"
-          :columns="[categoryList]"
-          keyName="name"
-          @confirm="onCategoryConfirm"
-          @cancel="showCategoryPicker = false"
-        />
+    <view class="min-h-screen bg-page">
+      <!-- 极简头部 -->
+      <view class="page-header">
+        <text class="page-title">提交反馈</text>
+        <text class="page-subtitle">告诉我们您的问题</text>
       </view>
 
-      <!-- 标题 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">问题标题</text>
-          <view class="w-1 h-1 rounded-full bg-nordic-error ml-2"></view>
+      <!-- 极简表单区域 -->
+      <view class="form-container">
+        <!-- 分类选择 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">问题分类</text>
+            <text class="required-mark">*</text>
+          </view>
+          <view class="form-input-wrapper" @tap="showCategoryPicker = true">
+            <text :class="['form-input-text', { placeholder: !selectedCategoryName }]">
+              {{ selectedCategoryName || '请选择' }}
+            </text>
+            <text class="form-input-arrow">→</text>
+          </view>
+          <u-picker
+            :show="showCategoryPicker"
+            :columns="[categoryList]"
+            keyName="name"
+            @confirm="onCategoryConfirm"
+            @cancel="showCategoryPicker = false"
+          />
         </view>
-        <u-input
-          v-model="formData.title"
-          placeholder="请简要描述问题"
-          :border="false"
-          :custom-style="{
-            background: '#EBE8E1',
-            borderRadius: '16rpx',
-            height: '80rpx',
-          }"
-          :maxlength="50"
-        />
-      </view>
 
-      <!-- 描述 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">详细描述</text>
-          <view class="w-1 h-1 rounded-full bg-nordic-error ml-2"></view>
+        <!-- 标题 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">问题标题</text>
+            <text class="required-mark">*</text>
+          </view>
+          <u-input
+            v-model="formData.title"
+            placeholder="请简要描述问题"
+            :border="false"
+            :custom-style="inputStyle"
+            :maxlength="50"
+          />
         </view>
-        <u-textarea
-          v-model="formData.description"
-          placeholder="请详细描述问题情况，以便更好地处理"
-          :border="false"
-          :custom-style="{
-            background: '#EBE8E1',
-            borderRadius: '16rpx',
-            minHeight: '200rpx',
-          }"
-          :maxlength="500"
-        />
-      </view>
 
-      <!-- 位置 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">位置信息</text>
+        <!-- 描述 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">详细描述</text>
+            <text class="required-mark">*</text>
+          </view>
+          <u-textarea
+            v-model="formData.description"
+            placeholder="请详细描述问题情况，以便更好地处理"
+            :border="false"
+            :custom-style="textareaStyle"
+            :maxlength="500"
+          />
         </view>
-        <u-input
-          v-model="formData.location"
-          placeholder="请输入具体位置（可选）"
-          :border="false"
-          :custom-style="{
-            background: '#EBE8E1',
-            borderRadius: '16rpx',
-            height: '80rpx',
-          }"
-        />
-      </view>
 
-      <!-- 图片上传 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">图片上传（最多9张）</text>
+        <!-- 位置 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">位置信息</text>
+            <text class="optional-mark">可选</text>
+          </view>
+          <u-input
+            v-model="formData.location"
+            placeholder="请输入具体位置"
+            :border="false"
+            :custom-style="inputStyle"
+          />
         </view>
-        <view class="flex flex-wrap gap-nordic-3">
-          <view v-for="(attachment, index) in uploadedAttachments" :key="attachment.id" class="relative" style="width: 160rpx; height: 160rpx; z-index: 10;">
-            <image
-              :src="attachment.url"
-              mode="aspectFill"
-              class="w-full h-full rounded-nordic-lg"
-              @tap="previewImage(index)"
-            />
-            <view class="absolute -top-2 -right-2 w-10 h-10 bg-nordic-accent-rose rounded-full flex items-center justify-center shadow-nordic-sm" style="z-index: 20;" @tap="removeImage(index)">
-              <text class="text-nordic-bg-card text-nordic-base">×</text>
+
+        <!-- 图片上传 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">图片上传</text>
+            <text class="optional-mark">可选</text>
+          </view>
+          <text class="form-hint">最多上传 9 张</text>
+          <view class="image-upload-area">
+            <view v-for="(attachment, index) in uploadedAttachments" :key="attachment.id" class="uploaded-image">
+              <image
+                :src="attachment.url"
+                mode="aspectFill"
+                class="upload-image"
+                @tap="previewImage(index)"
+              />
+              <view class="image-remove" @tap="removeImage(index)">×</view>
+            </view>
+            <view v-if="uploadedAttachments.length < 9" class="upload-add" @tap="chooseImage">
+              <text class="upload-add-icon">+</text>
+              <text class="upload-add-text">添加</text>
             </view>
           </view>
-          <view v-if="uploadedAttachments.length < 9" class="border-2 border-dashed border-nordic-border rounded-nordic-lg flex flex-col items-center justify-center nordic-button-animate" style="width: 160rpx; height: 160rpx;" @tap="chooseImage">
-            <text class="text-5xl text-nordic-text-tertiary">+</text>
-            <text class="text-nordic-xs text-nordic-text-tertiary mt-2">添加图片</text>
+        </view>
+
+        <!-- 优先级 -->
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">优先级</text>
           </view>
+          <u-radio-group v-model="formData.priority" @change="onPriorityChange">
+            <view class="priority-options">
+              <view
+                :class="['priority-option', { active: formData.priority === 'NORMAL' }]"
+                @tap="formData.priority = 'NORMAL'"
+              >
+                <view class="priority-radio">
+                  <view v-if="formData.priority === 'NORMAL'" class="priority-radio-dot"></view>
+                </view>
+                <text class="priority-text">普通</text>
+              </view>
+              <view
+                :class="['priority-option', { active: formData.priority === 'URGENT' }]"
+                @tap="formData.priority = 'URGENT'"
+              >
+                <view class="priority-radio">
+                  <view v-if="formData.priority === 'URGENT'" class="priority-radio-dot"></view>
+                </view>
+                <text class="priority-text">紧急</text>
+              </view>
+            </view>
+          </u-radio-group>
+        </view>
+
+        <!-- 提交按钮 -->
+        <view class="submit-section">
+          <button
+            class="submit-btn"
+            :loading="submitting"
+            :disabled="!isFormValid"
+            @tap="handleSubmit"
+          >
+            提交反馈
+          </button>
         </view>
       </view>
-
-      <!-- 优先级 -->
-      <view class="mb-nordic-6">
-        <view class="flex items-center mb-nordic-3">
-          <text class="text-nordic-base font-semibold text-nordic-text-primary">优先级</text>
-        </view>
-        <u-radio-group v-model="formData.priority" @change="onPriorityChange">
-          <u-radio
-            :custom-style="{ marginRight: '40rpx' }"
-            name="NORMAL"
-            :checked="formData.priority === 'NORMAL'"
-          >
-            普通
-          </u-radio>
-          <u-radio
-            name="URGENT"
-            :checked="formData.priority === 'URGENT'"
-          >
-            紧急
-          </u-radio>
-        </u-radio-group>
-      </view>
-
-      <!-- 提交按钮 -->
-      <u-button
-        type="primary"
-        size="large"
-        :loading="submitting"
-        :disabled="!isFormValid"
-        @click="handleSubmit"
-        :custom-style="{
-          opacity: isFormValid ? 1 : 0.5,
-        }"
-      >
-        提交反馈
-      </u-button>
-    </view>
     </view>
   </PageLayout>
 </template>
@@ -192,6 +187,21 @@ const isFormValid = computed(() => {
          formData.value.categoryId;
 });
 
+// 极简输入框样式
+const inputStyle = {
+  background: '#FAFAFA',
+  borderRadius: '4rpx',
+  height: '88rpx',
+  padding: '0 24rpx',
+};
+
+const textareaStyle = {
+  background: '#FAFAFA',
+  borderRadius: '4rpx',
+  minHeight: '200rpx',
+  padding: '20rpx 24rpx',
+};
+
 /**
  * 加载分类列表
  */
@@ -237,12 +247,8 @@ async function chooseImage() {
 
     uni.showLoading({ title: '上传中...' });
 
-    // 选择并立即上传图片
     const attachments = await chooseAndUploadImage(remainingCount);
-    console.log('[SubmitPage] 上传成功后的 attachments:', JSON.stringify(attachments, null, 2));
-    console.log('[SubmitPage] 当前 uploadedAttachments:', JSON.stringify(uploadedAttachments.value, null, 2));
     uploadedAttachments.value.push(...attachments);
-    console.log('[SubmitPage] push 后的 uploadedAttachments:', JSON.stringify(uploadedAttachments.value, null, 2));
 
     uni.hideLoading();
     uni.showToast({
@@ -292,11 +298,10 @@ async function handleSubmit() {
   submitting.value = true;
 
   try {
-    // 1. 创建工单（图片已在选择时上传）
     const attachmentUrls = uploadedAttachments.value.map(att => att.url);
     await ticketStore.createTicket({
       ...formData.value,
-      attachmentUrls, // 发送预上传的图片URL
+      attachmentUrls,
     });
 
     uni.showToast({
@@ -304,7 +309,6 @@ async function handleSubmit() {
       icon: 'success',
     });
 
-    // 3. 延迟跳转到工单列表
     setTimeout(() => {
       uni.navigateBack();
     }, 1500);
@@ -319,11 +323,7 @@ async function handleSubmit() {
   }
 }
 
-/**
- * 页面显示时更新TabBar选中态
- */
 onShow(() => {
-  // 使用更安全的方式更新TabBar选中状态
   updateTabBarSelected('/pages/user/submit/index')
 })
 
@@ -331,3 +331,225 @@ onMounted(() => {
   loadCategories();
 });
 </script>
+
+<style scoped>
+/* 页面头部 */
+.page-header {
+  padding: 64rpx 48rpx 48rpx;
+  background: var(--color-white);
+  border-bottom: 1rpx solid var(--border);
+}
+
+.page-title {
+  font-size: 56rpx;
+  font-weight: 200;
+  letter-spacing: 4rpx;
+  color: var(--color-black);
+  display: block;
+}
+
+.page-subtitle {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  margin-top: 16rpx;
+  display: block;
+}
+
+/* 表单容器 */
+.form-container {
+  padding: 48rpx;
+  background: var(--color-white);
+}
+
+/* 表单项 */
+.form-item {
+  margin-bottom: 48rpx;
+}
+
+.form-item:last-of-type {
+  margin-bottom: 0;
+}
+
+.form-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.form-label {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  letter-spacing: 2rpx;
+  font-weight: 500;
+}
+
+.required-mark {
+  font-size: var(--text-tiny);
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.optional-mark {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.form-hint {
+  font-size: var(--text-tiny);
+  color: var(--text-tertiary);
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+/* 输入框样式 */
+.form-input-wrapper {
+  background: var(--bg-input);
+  padding: 24rpx;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.form-input-text {
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+.form-input-text.placeholder {
+  color: var(--text-tertiary);
+}
+
+.form-input-arrow {
+  font-size: var(--text-body);
+  color: var(--text-tertiary);
+}
+
+/* 图片上传区域 */
+.image-upload-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.uploaded-image {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.upload-image {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.image-remove {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: var(--color-black);
+  color: var(--color-white);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  line-height: 1;
+}
+
+.upload-add {
+  width: 160rpx;
+  height: 160rpx;
+  border: 1rpx dashed var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-add-icon {
+  font-size: 48rpx;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+
+.upload-add-text {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  margin-top: 8rpx;
+}
+
+/* 优先级选项 */
+.priority-options {
+  display: flex;
+  gap: 24rpx;
+}
+
+.priority-option {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
+
+.priority-option.active {
+  background: var(--bg-card);
+  border: 1rpx solid var(--color-black);
+}
+
+.priority-radio {
+  width: 32rpx;
+  height: 32rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.priority-radio-dot {
+  width: 16rpx;
+  height: 16rpx;
+  background: var(--color-black);
+  border-radius: 50%;
+}
+
+.priority-option.active .priority-radio {
+  border-color: var(--color-black);
+}
+
+.priority-text {
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+/* 提交区域 */
+.submit-section {
+  margin-top: 64rpx;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 32rpx;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-size: var(--text-body);
+  font-weight: 400;
+  letter-spacing: 2rpx;
+  text-align: center;
+  border: none;
+  border-radius: 0;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+}
+</style>

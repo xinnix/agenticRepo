@@ -11,6 +11,17 @@ import {
  * 提供类型安全的统计数据 API
  */
 
+/**
+ * 获取 ISO 周数
+ */
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
 // 输入 Schema 定义
 const DateRangeInput = z.object({
   startDate: z.string().datetime(),
@@ -173,31 +184,47 @@ export const statisticsRouter = router({
     .query(async ({ ctx, input }) => {
       const { startDate, endDate, interval } = input;
 
-      // 简化的趋势统计（按天分组）
-      const dateFormat =
-        interval === 'day'
-          ? 'YYYY-MM-DD'
-          : interval === 'week'
-          ? 'YYYY-"W"WW'
-          : 'YYYY-MM';
+      // 使用标准查询代替原始 SQL
+      const tickets = await ctx.prisma.ticket.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+        },
+        select: {
+          createdAt: true,
+        },
+      });
 
-      const tickets = await ctx.prisma.$queryRaw<
-        Array<{ date: string; count: bigint }>
-      >`
-        SELECT
-          TO_CHAR("createdAt", '${dateFormat}') as date,
-          COUNT(*) as count
-        FROM "tickets"
-        WHERE "createdAt" >= ${new Date(startDate)}
-          AND "createdAt" <= ${new Date(endDate)}
-        GROUP BY date
-        ORDER BY date
-      `;
+      // 按时间间隔分组统计
+      const grouped = new Map<string, number>();
 
-      return tickets.map((t) => ({
-        date: t.date,
-        count: Number(t.count),
-      }));
+      for (const ticket of tickets) {
+        const date = new Date(ticket.createdAt);
+        let key: string;
+
+        if (interval === 'day') {
+          key = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        } else if (interval === 'week') {
+          // 获取 ISO 周数
+          const year = date.getFullYear();
+          const week = getISOWeek(date);
+          key = `${year}-W${String(week).padStart(2, '0')}`;
+        } else {
+          // month
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        grouped.set(key, (grouped.get(key) || 0) + 1);
+      }
+
+      // 转换为数组并排序
+      const result = Array.from(grouped.entries())
+        .map(([date, count]) => ({ date, count }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return result;
     }),
 
   /**

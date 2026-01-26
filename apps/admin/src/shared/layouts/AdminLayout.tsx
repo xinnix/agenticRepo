@@ -9,7 +9,6 @@ import {
   FolderOutlined,
   LogoutOutlined,
   FileTextOutlined,
-  BarChartOutlined,
   ApartmentOutlined,
   BankOutlined,
   ToolOutlined,
@@ -78,12 +77,6 @@ const createMenuItems = (navigate: (path: string) => void) => [
         onClick: () => navigate("/categories"),
       },
     ],
-  },
-  {
-    key: "/statistics",
-    icon: <BarChartOutlined />,
-    label: "数据统计",
-    onClick: () => navigate("/statistics"),
   },
   {
     type: "divider",
