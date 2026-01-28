@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useOne, useUpdate } from "@refinedev/core";
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   Divider,
   Select,
 } from "antd";
+import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -31,7 +32,7 @@ import {
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 
-// 本地类型定义
+// 本地类型定义（保留 WAIT_ACCEPT 以兼容旧数据）
 type TicketStatus = "WAIT_ASSIGN" | "WAIT_ACCEPT" | "PROCESSING" | "COMPLETED" | "CLOSED";
 
 const { TextArea } = Input;
@@ -60,6 +61,13 @@ export const TicketDetailPage = () => {
   });
   const { mutate: update } = useUpdate();
 
+  // 获取办事员列表
+  const { data: handlersData, isLoading: handlersLoading } = useTrpcQuery(
+    "user.getHandlers",
+    { page: 1, pageSize: 1000 },
+    { enabled: true }
+  );
+
   const [rateModalVisible, setRateModalVisible] = useState(false);
   const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -67,6 +75,15 @@ export const TicketDetailPage = () => {
   const [assignForm] = Form.useForm();
 
   const ticket = result?.data;
+
+  // 格式化办事员列表为 Select options
+  const handlerOptions = useMemo(() => {
+    const handlers = handlersData?.items || [];
+    return handlers.map((handler: any) => ({
+      label: `${handler.realName || handler.username}${handler.department ? ` - ${handler.department.name}` : ""}`,
+      value: handler.id,
+    }));
+  }, [handlersData]);
 
   // 状态历史表格列
   const statusHistoryColumns = [
@@ -148,21 +165,6 @@ export const TicketDetailPage = () => {
   const handleAction = async (action: string) => {
     try {
       switch (action) {
-        case "accept":
-          await update(
-            {
-              resource: "ticket",
-              id,
-              meta: { method: "accept" },
-            },
-            {
-              onSuccess: () => {
-                message.success("接单成功");
-                query.refetch();
-              },
-            }
-          );
-          break;
         case "complete":
           await update(
             {
@@ -265,10 +267,9 @@ export const TicketDetailPage = () => {
   // 获取可执行的操作
   const getAvailableActions = (status: TicketStatus) => {
     const actions: string[] = [];
-    if (status === "WAIT_ACCEPT") actions.push("accept");
     if (status === "PROCESSING") actions.push("complete");
     if (
-      ["WAIT_ASSIGN", "WAIT_ACCEPT", "PROCESSING", "COMPLETED"].includes(
+      ["WAIT_ASSIGN", "PROCESSING", "COMPLETED"].includes(
         status
       )
     )
@@ -317,9 +318,6 @@ export const TicketDetailPage = () => {
             style={{ marginBottom: 16 }}
           >
             <Descriptions column={2} bordered>
-              <Descriptions.Item label="工单标题" span={2}>
-                {ticket.title}
-              </Descriptions.Item>
               <Descriptions.Item label="分类">
                 {ticket.category?.name}
               </Descriptions.Item>
@@ -337,6 +335,15 @@ export const TicketDetailPage = () => {
                 >
                   {STATUS_CONFIG[ticket.status]?.label}
                 </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="位置">
+                {ticket.presetArea?.name || ticket.location || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="提报人姓名">
+                {ticket.submitterName || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="提报人电话">
+                {ticket.submitterPhone || "-"}
               </Descriptions.Item>
               <Descriptions.Item label="创建人">
                 <Space>
@@ -677,6 +684,12 @@ export const TicketDetailPage = () => {
         okText="确认指派"
         cancelText="取消"
       >
+        {handlersLoading && <div style={{ marginBottom: 16, color: '#999' }}>加载办事员列表中...</div>}
+        {!handlersLoading && handlerOptions.length === 0 && (
+          <div style={{ marginBottom: 16, color: '#ff4d4f' }}>
+            暂无可指派的办事员（办事员需要有微信 OpenID 和 handler 角色）
+          </div>
+        )}
         <Form form={assignForm} layout="vertical">
           <Form.Item
             name="assignedId"
@@ -684,14 +697,20 @@ export const TicketDetailPage = () => {
             rules={[{ required: true, message: "请选择处理人" }]}
           >
             <Select
-              placeholder="请选择处理人"
+              placeholder={handlersLoading ? "加载中..." : "请选择处理人"}
               showSearch
-              options={[] as Array<{ label: string; value: string }>}
+              disabled={handlersLoading || handlerOptions.length === 0}
+              options={handlerOptions}
               filterOption={(input, option) =>
                 String(option?.label ?? "").toLowerCase().includes(input.toLowerCase())
               }
             />
           </Form.Item>
+          {!handlersLoading && (
+            <div style={{ fontSize: 12, color: '#999' }}>
+              共 {handlerOptions.length} 位办事员可选
+            </div>
+          )}
         </Form>
       </Modal>
     </div>
