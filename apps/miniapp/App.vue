@@ -5,33 +5,26 @@ import { useUserStore } from '@/store';
 const userStore = useUserStore();
 
 onLaunch(() => {
-	console.log('App Launch');
+  console.log('App Launch');
 
-	// 初始化：从本地存储加载认证状态
-	userStore.loadFromStorage();
+  // 初始化：从本地存储加载认证状态
+  userStore.loadFromStorage();
 
-	console.log('[App] Auth initialized, token exists:', !!userStore.token);
-	console.log('[App] isAuthenticated:', userStore.isAuthenticated);
+  console.log('[App] Auth initialized, token exists:', !!userStore.token);
+  console.log('[App] isAuthenticated:', userStore.isAuthenticated);
 });
 
 onShow(() => {
-	console.log('App Show');
+  console.log('App Show');
 });
 
 onHide(() => {
-	console.log('App Hide');
+  console.log('App Hide');
 });
 </script>
 
 <style lang="scss">
-/* 引入 uView Plus 全局样式 */
-@import "uview-plus/index.scss";
-
-/* 引入极简主义全局样式 */
-@import "./styles/minimal.scss";
-
-/* 引入 uView Plus 组件样式覆盖 */
-@import "./styles/uview-override.scss";
+@import "@/uni_modules/uview-next/index.scss";
 
 /* 现代极简主义主题全局样式 */
 page {

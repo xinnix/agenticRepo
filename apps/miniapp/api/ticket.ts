@@ -97,10 +97,16 @@ export function getTicketComments(ticketId: string): Promise<Comment[]> {
 }
 
 /**
- * 添加工单评论
+ * 添加工单评论/处理记录
  */
-export function addTicketComment(ticketId: string, content: string): Promise<Comment> {
-  return post<Comment>(`/tickets/${ticketId}/comments`, { content }, { showLoading: true, loadingText: '发送中...' });
+export function addTicketComment(
+  ticketId: string,
+  data: {
+    content?: string;
+    attachmentUrls?: string[];
+  }
+): Promise<Comment> {
+  return post<Comment>(`/tickets/${ticketId}/comments`, data, { showLoading: true, loadingText: '提交中...' });
 }
 
 /**

@@ -88,7 +88,7 @@ export function useUpload() {
   }
 
   /**
-   * 上传单个文件
+   * 上传单个文件（直接使用后端上传）
    */
   async function uploadFile(
     filePath: string,
@@ -98,18 +98,10 @@ export function useUpload() {
     uploading.value = true;
 
     try {
-      // 方法1: 使用OSS直传（如果支持）
-      try {
-        const attachment = await uploadToOssWithCredentials(filePath, type);
-        uploadedFiles.value.push(attachment);
-        return attachment;
-      } catch (ossError) {
-        console.warn('OSS直传失败，回退到传统上传:', ossError);
-        // 方法2: 回退到传统上传
-        const attachment = await attachmentApi.uploadFile(filePath, type, ticketId);
-        uploadedFiles.value.push(attachment);
-        return attachment;
-      }
+      // 直接使用后端上传（避免 OSS 直传凭证配置问题）
+      const attachment = await attachmentApi.uploadFile(filePath, type, ticketId);
+      uploadedFiles.value.push(attachment);
+      return attachment;
     } catch (error) {
       console.error('文件上传失败', error);
       uni.showToast({

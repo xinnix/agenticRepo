@@ -5,34 +5,8 @@
 import type { TabBarConfig, TabItem, UserRole } from '@/types/tabbar'
 
 export const TAB_BAR_CONFIGS: TabBarConfig = {
-  // 普通用户配置
-  user: [
-    {
-      id: 'submit',
-      text: '提交反馈',
-      pagePath: '/pages/user/submit/index',
-      iconPath: 'static/tab_submit.png',
-      selectedIconPath: 'static/tab_submit_active.png',
-      roles: ['user']
-    },
-    {
-      id: 'my-tickets',
-      text: '我的反馈',
-      pagePath: '/pages/user/my-tickets/index',
-      iconPath: 'static/tab_ticket.png',
-      selectedIconPath: 'static/tab_ticket_active.png',
-      roles: ['user'],
-      badge: 0
-    },
-    {
-      id: 'profile',
-      text: '我的',
-      pagePath: '/pages/common/profile/index',
-      iconPath: 'static/tab_profile.png',
-      selectedIconPath: 'static/tab_profile_active.png',
-      roles: ['user', 'handler']
-    }
-  ],
+  // 普通用户配置 - 空配置，不显示tabBar
+  user: [],
 
   // 处理员配置（包括 department_admin）
   handler: [
@@ -90,13 +64,13 @@ export function getTabConfigByRole(role: UserRole | null): TabItem[] {
  * @returns 默认Tab ID
  */
 export function getDefaultTabId(role: UserRole | null): string {
-  if (!role) return 'submit'
+  if (!role) return 'dashboard'
 
   if (role === 'handler') {
     return 'dashboard'
   }
 
-  return 'submit'
+  return 'dashboard'
 }
 
 /**
