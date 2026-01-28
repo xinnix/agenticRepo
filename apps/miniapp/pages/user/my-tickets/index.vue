@@ -3,16 +3,15 @@
     <view class="min-h-screen bg-page flex flex-col">
       <!-- 极简分段控件 -->
       <view class="px-xl py-md border-b">
-        <view class="tab-container">
-          <view
-            v-for="tab in tabs"
-            :key="tab.key"
-            :class="['tab-item', { active: currentTab === tab.key }]"
-            @tap="switchTab(tab.key)"
-          >
-            <text class="tab-text">{{ tab.label }}</text>
-          </view>
-        </view>
+        <u-tabs
+          :list="tabs"
+          :current="currentTabIndex"
+          @change="onTabChange"
+          :line-color="'#000000'"
+          :active-style="{ color: '#000000', fontWeight: '600' }"
+          :inactive-style="{ color: '#5A5650' }"
+          :item-style="{ padding: '16rpx 0' }"
+        />
       </view>
 
       <!-- 申请成为办事员卡片 - 极简风格 -->
@@ -20,13 +19,13 @@
         <view class="apply-card" @tap="goToApplyHandler">
           <view class="flex items-center justify-between w-full">
             <view class="flex items-center gap-md">
-              <text class="apply-icon">◆</text>
+              <u-icon name="star" class="apply-icon"></u-icon>
               <view>
-                <text class="apply-title">申请成为办事员</text>
-                <text class="apply-subtitle">加入我们，提供更好的服务</text>
+                <u-text class="apply-title" text="申请成为办事员"></u-text>
+                <u-text class="apply-subtitle" text="加入我们，提供更好的服务"></u-text>
               </view>
             </view>
-            <text class="apply-arrow">›</text>
+            <u-icon name="arrow-right" class="apply-arrow"></u-icon>
           </view>
         </view>
       </view>
@@ -45,105 +44,60 @@
         />
 
         <!-- 极简工单列表 -->
-        <view
-          v-for="(ticket, index) in ticketList"
-          :key="ticket.id"
-          :class="['ticket-list-item animate-fade-in-up', { 'pl-xl pr-xl': true }]"
-          :style="{ animationDelay: `${(index % 5) * 0.05}s` }"
-          @tap="goToDetail(ticket.id)"
-        >
-          <!-- 状态行 -->
-          <view class="ticket-status mb-sm">
-            <view class="flex items-center gap-xs">
-              <view class="status-dot"></view>
-              <text class="ticket-number">{{ ticket.ticketNumber }}</text>
-            </view>
-            <view :class="['status-badge', getStatusBadgeClass(ticket.status)]">
-              {{ getStatusText(ticket.status) }}
-            </view>
-          </view>
-
-          <!-- 标题 -->
-          <text class="ticket-title mb-sm">{{ ticket.title }}</text>
-          <text class="ticket-description mb-md">{{ ticket.description }}</text>
-
-          <!-- 附件预览 -->
-          <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-sm mb-md">
-            <view
-              v-for="(img, i) in ticket.attachments.slice(0, 3)"
-              :key="i"
-              class="attachment-preview"
-            >
-              <image
-                :src="img.url"
-                class="w-full h-full"
-                mode="aspectFill"
-              />
-            </view>
-            <view
-              v-if="ticket.attachments.length > 3"
-              class="attachment-more"
-            >
-              <text class="text-tiny">+{{ ticket.attachments.length - 3 }}</text>
-            </view>
-          </view>
-
-          <!-- 元信息 -->
-          <view class="flex gap-lg">
-            <view class="flex items-center gap-xs">
-              <text class="meta-icon">◆</text>
-              <text class="meta-text">{{ ticket.category?.name }}</text>
-            </view>
-            <view class="flex items-center gap-xs">
-              <text class="meta-icon">◷</text>
-              <text class="meta-text">{{ formatDate(ticket.createdAt) }}</text>
-            </view>
-          </view>
-
-          <!-- 优先级标记 -->
-          <view
-            v-if="ticket.priority === 'URGENT'"
-            class="priority-mark"
+        <u-cell-group :border="false">
+          <u-cell
+            v-for="(ticket, index) in ticketList"
+            :key="ticket.id"
+            @click="goToDetail(ticket.id)"
+            :border="true"
+            :title="ticket.title"
+            :label="ticket.description"
           >
-            <text class="text-tiny font-semibold">紧急</text>
-          </view>
-        </view>
+            <template #icon>
+              <u-tag
+                :text="getStatusText(ticket.status)"
+                :type="getStatusTagType(ticket.status)"
+                size="mini"
+                plain
+              />
+            </template>
+            <template #value>
+              <u-text :text="formatDate(ticket.createdAt)" class="text-tiny"></u-text>
+            </template>
+          </u-cell>
+        </u-cell-group>
 
         <!-- 加载更多 -->
         <view v-if="loading" class="flex justify-center py-xl">
           <u-loading-icon mode="circle" />
-          <text class="ml-sm text-body text-secondary">加载中...</text>
+          <u-text class="ml-sm text-body text-secondary" text="加载中..."></u-text>
         </view>
 
         <!-- 没有更多 -->
         <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-xl">
-          <text class="text-caption text-secondary">没有更多了</text>
+          <u-text class="text-caption text-secondary" text="没有更多了"></u-text>
         </view>
       </scroll-view>
 
       <!-- 极简悬浮按钮 -->
-      <view
-        class="floating-btn"
-        @tap="goToSubmit"
-      >
-        <text class="floating-btn-icon">+</text>
-      </view>
+      <u-fab
+        @click="goToSubmit"
+        :icon="'plus'"
+        :text="'提交'"
+      />
     </view>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
 import { useTicketStore } from '@/store';
-import { useTabBarStore } from '@/store/modules/tabbar';
 import PageLayout from '@/components/PageLayout.vue';
 import { TicketStatus, type Ticket } from '@/api/types';
 
 const ticketStore = useTicketStore();
-const tabBarStore = useTabBarStore();
 
-// 标签页
+// 标签页 - u-tabs 需要使用这种格式
 const tabs = [
   { key: 'all', label: '全部' },
   { key: String(TicketStatus.WAIT_ASSIGN), label: '待指派' },
@@ -151,6 +105,7 @@ const tabs = [
   { key: String(TicketStatus.COMPLETED), label: '待评价' },
 ];
 const currentTab = ref('all');
+const currentTabIndex = ref(0);
 
 // 列表数据
 const ticketList = computed(() => ticketStore.ticketList);
@@ -160,9 +115,21 @@ const hasMore = computed(() => ticketStore.hasMore);
 /**
  * 切换标签
  */
-function switchTab(tab: string) {
-  currentTab.value = tab;
+function onTabChange(e: any) {
+  const index = e.index || e;
+  currentTabIndex.value = index;
+  currentTab.value = tabs[index].key;
   refresh();
+}
+
+/**
+ * 切换标签（旧方法保留兼容）
+ */
+function switchTab(tab: string) {
+  const index = tabs.findIndex(t => t.key === tab);
+  if (index !== -1) {
+    onTabChange({ index });
+  }
 }
 
 /**
@@ -220,13 +187,6 @@ function goToApplyHandler() {
 }
 
 /**
- * 页面显示时初始化TabBar状态
- */
-onShow(() => {
-  tabBarStore.setActiveTab('my-tickets');
-});
-
-/**
  * 页面挂载时初始化数据
  */
 onMounted(() => {
@@ -259,6 +219,20 @@ function getStatusText(status: string): string {
     'CLOSED': '已关闭',
   };
   return statusTexts[status] || '未知';
+}
+
+/**
+ * 获取状态标签类型（用于 u-tag）
+ */
+function getStatusTagType(status: string): string {
+  const tagTypes: Record<string, string> = {
+    'WAIT_ASSIGN': 'info',
+    'WAIT_ACCEPT': 'primary',
+    'PROCESSING': 'warning',
+    'COMPLETED': 'success',
+    'CLOSED': 'default',
+  };
+  return tagTypes[status] || 'default';
 }
 
 /**

@@ -3,43 +3,41 @@
     <view class="bg-nordic-bg-card rounded-nordic-xl shadow-nordic-md p-10 w-full">
       <!-- 星级评分 -->
       <view class="text-center pb-nordic-6 border-b border-nordic-border">
-        <text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4">请为服务评分</text>
-        <view class="flex justify-center gap-nordic-3 mb-nordic-4">
-          <text
-            v-for="i in 5"
-            :key="i"
-            class="text-7xl transition-transform"
-            :class="{ 'scale-110': i <= rating }"
-            @tap="setRating(i)"
-          >
-            {{ i <= rating ? '⭐' : '☆' }}
-          </text>
-        </view>
-        <text class="block text-nordic-base text-primary font-medium">{{ ratingText }}</text>
+        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="请为服务评分"></u-text>
+        <u-rate
+          v-model="rating"
+          :count="5"
+          :active-color="'#FFC107'"
+          :inactive-color="'#E5E4E2'"
+          :size="50"
+          :gutter="12"
+          @change="setRating"
+        />
+        <u-text class="block text-nordic-base text-primary font-medium mt-nordic-4" :text="ratingText"></u-text>
       </view>
 
       <!-- 反馈意见 -->
       <view class="pt-nordic-6">
-        <text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-3">反馈意见（可选）</text>
-        <textarea
+        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-3" text="反馈意见（可选）"></u-text>
+        <u-textarea
           v-model="feedback"
-          class="w-full min-h-50 bg-nordic-bg-input rounded-nordic-sm p-nordic-4 text-nordic-base text-nordic-text-primary leading-relaxed"
           placeholder="请描述您的满意或不满意之处，帮助我们改进服务..."
-          placeholder-class="text-nordic-text-tertiary"
-          maxlength="200"
+          :border="none"
+          :custom-style="{ background: '#FAFAFA', borderRadius: '4rpx', minHeight: '200rpx', padding: '16rpx' }"
+          :maxlength="200"
         />
-        <text class="block text-right text-nordic-xs text-nordic-text-tertiary mt-nordic-2">{{ feedback.length }}/200</text>
+        <u-text class="block text-right text-nordic-xs text-nordic-text-tertiary mt-nordic-2" :text="`${feedback.length}/200`"></u-text>
 
         <!-- 提交按钮 -->
-        <button
-          class="w-full h-22 bg-primary text-nordic-bg-card rounded-nordic-lg text-nordic-base font-medium flex items-center justify-center shadow-nordic-sm nordic-button-animate mt-nordic-4"
-          :class="{ 'opacity-50': rating === 0 }"
-          @tap="handleSubmit"
+        <u-button
+          type="primary"
           :loading="submitting"
           :disabled="rating === 0"
-        >
-          <text>提交评价</text>
-        </button>
+          @click="handleSubmit"
+          :custom-style="{ width: '100%', marginTop: '32rpx' }"
+          :class="{ 'opacity-50': rating === 0 }"
+          text="提交评价"
+        />
       </view>
     </view>
   </view>

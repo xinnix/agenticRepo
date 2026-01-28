@@ -69,7 +69,7 @@ export class FileStorageService implements IFileStorage {
         break;
       default:
         console.log('[FileStorage] 使用本地存储策略:', provider);
-        this.strategy = new LocalStorageStrategy(this.uploadPath);
+        this.strategy = new LocalStorageStrategy(this.uploadPath, config);
     }
   }
 
@@ -100,6 +100,18 @@ export class FileStorageService implements IFileStorage {
   }
 
   /**
+   * 获取预览 URL（用于私有文件的签名 URL）
+   */
+  async getPreviewUrl(filePath: string, expiresIn = 3600): Promise<string> {
+    try {
+      return await this.strategy.getSignedUrl(filePath, expiresIn);
+    } catch (error) {
+      console.error('获取预览 URL 失败:', error);
+      return filePath;
+    }
+  }
+
+  /**
    * 验证文件类型
    */
   validateImageType(mimeType: string): boolean {
@@ -118,7 +130,10 @@ export class FileStorageService implements IFileStorage {
 // ============================================
 
 class LocalStorageStrategy implements IFileStorage {
-  constructor(private basePath: string) {}
+  constructor(
+    private basePath: string,
+    private config?: ConfigService,
+  ) {}
 
   async upload(file: UploadedFile, dirPath: string): Promise<UploadResult> {
     const fullPath = pathModule.join(this.basePath, dirPath);
@@ -136,8 +151,10 @@ class LocalStorageStrategy implements IFileStorage {
     // 写入文件
     await fs.writeFile(filePath, file.buffer);
 
-    // 返回相对路径作为 URL
-    const url = `${dirPath}/${fileName}`;
+    // 返回完整的 URL（包含服务器地址）
+    // 从环境变量或默认值获取服务器地址
+    const serverUrl = this.config?.get<string>('SERVER_URL', 'http://localhost:3000');
+    const url = `${serverUrl}/${dirPath}/${fileName}`;
 
     return {
       url,
@@ -205,6 +222,7 @@ class AliyunOssStrategy implements IFileStorage {
       endpoint,
       accessKeyId,
       accessKeySecret,
+      bucket,
     });
 
     this.bucket = bucket;
@@ -246,12 +264,19 @@ class AliyunOssStrategy implements IFileStorage {
 
   async getSignedUrl(filePath: string, expiresIn = 3600): Promise<string> {
     try {
-      const url = await this.client.signatureUrl(filePath, { expires: expiresIn });
+      // 如果 filePath 是完整 URL，提取对象名
+      let objectName = filePath;
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        const url = new URL(filePath);
+        objectName = url.pathname.substring(1); // 去掉开头的 /
+      }
+
+      const url = await this.client.signatureUrl(objectName, { expires: expiresIn });
       return url;
     } catch (error) {
       console.error('获取 OSS 签名 URL 失败:', error);
       // 如果获取签名失败，返回原始 URL
-      return `https://${this.bucket}.${this.client.options.region}.aliyuncs.com/${filePath}`;
+      return filePath;
     }
   }
 

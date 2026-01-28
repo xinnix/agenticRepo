@@ -4,60 +4,64 @@
     <!-- 北欧风格用户信息卡片 -->
     <view class="nordic-gradient-primary p-nordic-6 mb-nordic-6">
       <view class="flex items-center gap-nordic-4">
-        <image class="w-25 h-25 rounded-full border-4" style="border-color: rgba(255, 255, 255, 0.3)" :src="userStore.avatar" />
+        <u-avatar
+          :src="userStore.avatar"
+          size="100rpx"
+        />
         <view class="flex flex-col">
-          <text class="text-nordic-h3 font-medium text-nordic-bg-card mb-nordic-2">{{ userStore.displayName }}</text>
-          <text class="text-nordic-base" style="color: rgba(255, 255, 255, 0.8)">{{ roleName }}</text>
+          <u-text class="text-nordic-h3 font-medium text-nordic-bg-card mb-nordic-2" :text="userStore.displayName"></u-text>
+          <u-text class="text-nordic-base" style="color: rgba(255, 255, 255, 0.8)" :text="roleName"></u-text>
         </view>
       </view>
     </view>
 
     <!-- 北欧风格功能列表 -->
-    <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm overflow-hidden mx-nordic-6 mb-nordic-6">
-      <view class="p-nordic-4 border-b border-nordic-border nordic-button-animate" @click="goToMyTickets">
-        <view class="flex items-center justify-between">
-          <view class="flex items-center gap-nordic-3">
-            <text class="text-2xl">📋</text>
-            <text class="text-nordic-base text-nordic-text-primary">我的工单</text>
-          </view>
-          <text class="text-nordic-text-tertiary">→</text>
-        </view>
-      </view>
+    <u-cell-group class="mx-nordic-6 mb-nordic-6">
+      <u-cell
+        title="我的工单"
+        :is-link="true"
+        @click="goToMyTickets"
+      >
+        <template #icon>
+          <u-icon name="list" size="24" class="mr-nordic-3"></u-icon>
+        </template>
+      </u-cell>
 
-      <view v-if="userStore.isHandler" class="p-nordic-4 border-b border-nordic-border nordic-button-animate" @click="goToDashboard">
-        <view class="flex items-center justify-between">
-          <view class="flex items-center gap-nordic-3">
-            <text class="text-2xl">📊</text>
-            <text class="text-nordic-base text-nordic-text-primary">工作台</text>
-          </view>
-          <text class="text-nordic-text-tertiary">→</text>
-        </view>
-      </view>
+      <u-cell
+        v-if="userStore.isHandler"
+        title="工作台"
+        :is-link="true"
+        @click="goToDashboard"
+      >
+        <template #icon>
+          <u-icon name="chart" size="24" class="mr-nordic-3"></u-icon>
+        </template>
+      </u-cell>
 
-      <view class="p-nordic-4 border-b border-nordic-border nordic-button-animate" @click="showAbout">
-        <view class="flex items-center justify-between">
-          <view class="flex items-center gap-nordic-3">
-            <text class="text-2xl">ℹ️</text>
-            <text class="text-nordic-base text-nordic-text-primary">关于</text>
-          </view>
-          <text class="text-nordic-text-tertiary">→</text>
-        </view>
-      </view>
+      <u-cell
+        title="关于"
+        :is-link="true"
+        @click="showAbout"
+      >
+        <template #icon>
+          <u-icon name="info-circle" size="24" class="mr-nordic-3"></u-icon>
+        </template>
+      </u-cell>
 
-      <view class="p-nordic-4 nordic-button-animate" @click="handleLogout">
-        <view class="flex items-center justify-between">
-          <view class="flex items-center gap-nordic-3">
-            <text class="text-2xl">🚪</text>
-            <text class="text-nordic-base text-nordic-accent-rose">退出登录</text>
-          </view>
-          <text class="text-nordic-text-tertiary">→</text>
-        </view>
-      </view>
-    </view>
+      <u-cell
+        title="退出登录"
+        :is-link="true"
+        @click="handleLogout"
+      >
+        <template #icon>
+          <u-icon name="close-circle" size="24" class="mr-nordic-3" color="#ff4d4f"></u-icon>
+        </template>
+      </u-cell>
+    </u-cell-group>
 
     <!-- 版本信息 -->
     <view class="text-center">
-      <text class="text-nordic-sm text-nordic-text-tertiary">反馈系统 v1.0.0</text>
+      <u-text class="text-nordic-sm text-nordic-text-tertiary" text="反馈系统 v1.0.0"></u-text>
     </view>
     </view>
   </PageLayout>
@@ -65,16 +69,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store';
-import { useTabBarStore } from '@/store/modules/tabbar';
-import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
 import PageLayout from '@/components/PageLayout.vue';
 import { navigateTo } from '@/utils/navigation';
 
 const userStore = useUserStore();
-const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();
 
 // 角色名称
 const roleName = computed(() => {
@@ -123,12 +122,4 @@ function handleLogout() {
     },
   });
 }
-
-/**
- * 页面显示时更新TabBar选中态
- */
-onShow(() => {
-  // 使用更安全的方式更新TabBar选中状态
-  updateTabBarSelected('/pages/common/profile/index')
-})
 </script>

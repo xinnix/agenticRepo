@@ -1,100 +1,82 @@
 <template>
-  <PageLayout>
-    <view class="min-h-screen bg-nordic-bg-page">
-      <!-- 页面头部 -->
-      <view class="bg-gradient-to-r from-blue-500 to-purple-600 p-nordic-6 text-center">
-        <text class="text-6xl block mb-4">🏢</text>
-        <text class="text-nordic-2xl font-bold text-white block mb-2">申请成为办事员</text>
-        <text class="text-nordic-base text-blue-100">加入我们，为用户提供更好的服务</text>
+  <view class="apply-page">
+    <!-- 顶部导航 -->
+
+
+    <!-- 主要内容 -->
+    <view class="content-container">
+      <!-- 申请卡片 -->
+      <view class="apply-card">
+        <view class="apply-icon">
+          <u-icon name="star" size="40" color="#FFFFFF"></u-icon>
+        </view>
+        <view class="apply-info">
+          <text class="apply-title">加入我们</text>
+          <text class="apply-desc">成为办事员，为用户提供更好的服务</text>
+        </view>
+      </view>
+
+      <!-- 权益说明 -->
+      <view class="benefits-card">
+        <text class="benefits-title">成为办事员你可以：</text>
+        <view class="benefit-item">
+          <u-icon name="checkmark-circle" size="20" color="#34C759"></u-icon>
+          <text>接单处理用户的反馈请求</text>
+        </view>
+        <view class="benefit-item">
+          <u-icon name="checkmark-circle" size="20" color="#34C759"></u-icon>
+          <text>查看附近的任务详情</text>
+        </view>
+        <view class="benefit-item">
+          <u-icon name="checkmark-circle" size="20" color="#34C759"></u-icon>
+          <text>积累服务经验和好评</text>
+        </view>
+        <view class="benefit-item">
+          <u-icon name="checkmark-circle" size="20" color="#34C759"></u-icon>
+          <text>获得相应的服务报酬</text>
+        </view>
       </view>
 
       <!-- 申请表单 -->
-      <view class="p-nordic-6">
-        <!-- 办事员介绍 -->
-        <view class="bg-nordic-bg-card rounded-nordic-lg p-nordic-6 mb-nordic-6">
-          <text class="text-nordic-lg font-medium text-nordic-text-primary block mb-4">💡 办事员职责</text>
-          <view class="space-y-3">
-            <view class="flex items-start">
-              <text class="text-primary mr-3 mt-1">•</text>
-              <text class="text-nordic-base text-nordic-text-secondary">处理用户提交的反馈和投诉</text>
-            </view>
-            <view class="flex items-start">
-              <text class="text-primary mr-3 mt-1">•</text>
-              <text class="text-nordic-base text-nordic-text-secondary">及时响应用户需求，提供解决方案</text>
-            </view>
-            <view class="flex items-start">
-              <text class="text-primary mr-3 mt-1">•</text>
-              <text class="text-nordic-base text-nordic-text-secondary">维护良好的用户体验和服务质量</text>
-            </view>
-          </view>
+      <view class="form-card">
+        <text class="form-title">申请信息</text>
+
+        <!-- 姓名 -->
+        <view class="form-item">
+          <text class="form-label">真实姓名</text>
+          <input v-model="form.name" class="form-input" placeholder="请输入您的真实姓名"
+            placeholder-style="color: #AEAEB2; font-size: 28rpx;" />
         </view>
 
-        <!-- 申请表单 -->
-        <view class="bg-nordic-bg-card rounded-nordic-lg p-nordic-6">
-          <text class="text-nordic-lg font-medium text-nordic-text-primary block mb-6">📝 申请信息</text>
-
-          <!-- 姓名 -->
-          <view class="mb-nordic-6">
-            <text class="text-nordic-base text-nordic-text-primary block mb-2">姓名 *</text>
-            <input
-              v-model="form.name"
-              class="bg-nordic-bg-input rounded-nordic-lg p-nordic-4 text-nordic-base text-nordic-text-primary"
-              placeholder="请输入您的真实姓名"
-              placeholder-class="text-nordic-text-tertiary"
-            />
-          </view>
-
-          <!-- 联系电话 -->
-          <view class="mb-nordic-8">
-            <text class="text-nordic-base text-nordic-text-primary block mb-2">联系电话 *</text>
-            <input
-              v-model="form.phone"
-              type="number"
-              class="bg-nordic-bg-input rounded-nordic-lg p-nordic-4 text-nordic-base text-nordic-text-primary"
-              placeholder="请输入您的联系电话"
-              placeholder-class="text-nordic-text-tertiary"
-            />
-          </view>
-
-          <!-- 提交按钮 -->
-          <button
-            class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-nordic-lg p-nordic-4 text-nordic-base font-medium text-white border-none nordic-button-animate"
-            :disabled="!isFormValid || submitting"
-            :class="{ 'opacity-50': !isFormValid || submitting }"
-            @tap="submitApplication"
-          >
-            <text v-if="submitting" class="flex items-center justify-center">
-              <text class="mr-2">提交中...</text>
-            </text>
-            <text v-else>提交申请</text>
-          </button>
+        <!-- 联系电话 -->
+        <view class="form-item">
+          <text class="form-label">联系电话</text>
+          <input v-model="form.phone" type="number" class="form-input" placeholder="请输入您的联系电话"
+            placeholder-style="color: #AEAEB2; font-size: 28rpx;" maxlength="11" />
         </view>
 
-        <!-- 温馨提示 -->
-        <view class="bg-blue-50 border border-blue-200 rounded-nordic-lg p-nordic-4 mt-nordic-6">
-          <view class="flex items-start">
-            <text class="text-blue-500 text-xl mr-3">💡</text>
-            <view>
-              <text class="text-nordic-base font-medium text-blue-700 block mb-1">温馨提示</text>
-              <text class="text-nordic-sm text-blue-600">
-                申请提交后，我们将在3个工作日内进行审核。审核通过后，您将收到通知并可以开始处理工单。
-              </text>
-            </view>
-          </view>
+        <!-- 提交按钮 -->
+        <view class="submit-btn" :class="{ disabled: !isFormValid || submitting }" @tap="submitApplication">
+          <text v-if="submitting">提交中...</text>
+          <text v-else>提交申请</text>
         </view>
       </view>
+
+      <!-- 温馨提示 -->
+      <view class="tips-card">
+        <view class="tips-header">
+          <u-icon name="info-circle" size="18" color="#007AFF"></u-icon>
+          <text class="tips-title">温馨提示</text>
+        </view>
+        <text class="tips-content">申请提交后，我们将在3个工作日内进行审核。审核通过后，您将收到通知并可以开始处理工单。</text>
+      </view>
     </view>
-  </PageLayout>
+  </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
-import { useTabBarStore } from '@/store/modules/tabbar';
-import PageLayout from '@/components/PageLayout.vue';
 import { API_BASE_URL } from '@/utils/constants';
-
-const tabBarStore = useTabBarStore();
 
 // 表单数据
 const form = ref({
@@ -110,11 +92,25 @@ const isFormValid = computed(() => {
   return form.value.name.trim() !== '' && form.value.phone.trim() !== '';
 });
 
+// 返回上一页
+function goBack() {
+  uni.navigateBack();
+}
+
 // 提交申请
 async function submitApplication() {
   if (!isFormValid.value) {
     uni.showToast({
       title: '请填写完整信息',
+      icon: 'none'
+    });
+    return;
+  }
+
+  // 验证手机号
+  if (!/^1[3-9]\d{9}$/.test(form.value.phone)) {
+    uni.showToast({
+      title: '请输入正确的手机号',
       icon: 'none'
     });
     return;
@@ -198,15 +194,220 @@ async function submitApplication() {
     submitting.value = false;
   }
 }
-
-// 页面显示时设置TabBar
-onShow(() => {
-  tabBarStore.setActiveTab('my-tickets');
-});
 </script>
 
 <style scoped>
-.space-y-3 > view + view {
-  margin-top: 0.75rem;
+.apply-page {
+  min-height: 100vh;
+  background: #F2F2F7;
+  padding-bottom: 48rpx;
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  background: #FFFFFF;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.page-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1C1C1E;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8rpx;
+  min-width: 80rpx;
+}
+
+.icon-btn {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* 内容区域 */
+.content-container {
+  padding: 32rpx;
+}
+
+/* 申请卡片 */
+.apply-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: #1C1C1E;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+}
+
+.apply-icon {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(0, 122, 255, 0.3);
+}
+
+.apply-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.apply-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.apply-desc {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* 权益卡片 */
+.benefits-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.benefits-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1C1C1E;
+  margin-bottom: 24rpx;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: #3A3A3C;
+}
+
+.benefit-item:not(:last-child) {
+  border-bottom: 2rpx solid #F2F2F7;
+}
+
+/* 表单卡片 */
+.form-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.form-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1C1C1E;
+  margin-bottom: 32rpx;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-item:last-of-type {
+  margin-bottom: 48rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #3A3A3C;
+  margin-bottom: 16rpx;
+}
+
+.form-input {
+  width: 100%;
+  background: #F2F2F7;
+  border-radius: 16rpx;
+  padding: 28rpx 24rpx;
+  font-size: 28rpx;
+  color: #1C1C1E;
+  box-sizing: border-box;
+  min-height: 88rpx;
+  line-height: 1.4;
+}
+
+/* 提交按钮 */
+.submit-btn {
+  width: 100%;
+  max-width: calc(100% - 4rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #007AFF;
+  color: #FFFFFF;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  box-shadow: 0 8rpx 32rpx rgba(0, 122, 255, 0.3);
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
+.submit-btn.disabled {
+  background: #C7C7CC;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+/* 温馨提示 */
+.tips-card {
+  background: rgba(0, 122, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  border: 2rpx solid rgba(0, 122, 255, 0.15);
+}
+
+.tips-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.tips-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #007AFF;
+}
+
+.tips-content {
+  font-size: 24rpx;
+  color: #3A3A3C;
+  line-height: 1.6;
 }
 </style>

@@ -1,191 +1,204 @@
 <template>
   <PageLayout>
     <view class="min-h-screen bg-page">
-      <!-- 极简头部 -->
-      <view class="page-header">
-        <text class="page-title">提交反馈</text>
-        <text class="page-subtitle">告诉我们您的问题</text>
-      </view>
-
       <!-- 极简表单区域 -->
       <view class="form-container">
-        <!-- 分类选择 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">问题分类</text>
-            <text class="required-mark">*</text>
-          </view>
-          <view class="form-input-wrapper" @tap="showCategoryPicker = true">
-            <text :class="['form-input-text', { placeholder: !selectedCategoryName }]">
-              {{ selectedCategoryName || '请选择' }}
-            </text>
-            <text class="form-input-arrow">→</text>
-          </view>
-          <u-picker
-            :show="showCategoryPicker"
-            :columns="[categoryList]"
-            keyName="name"
-            @confirm="onCategoryConfirm"
-            @cancel="showCategoryPicker = false"
-          />
-        </view>
+        <u-form labelPosition="top" :model="formData" :rules="rules" ref="uFormRef" label-width="200rpx">
+          <!-- 位置信息 -->
+          <u-form-item label="位置信息" prop="presetAreaId" borderBottom @click="showAreaActionSheet = true">
+            <u-input
+              v-model="selectedAreaName"
+              placeholder="请选择位置信息（可选）"
+              disabled
+              disabledColor="#ffffff"
+              border="none"
+              :custom-style="inputStyle"
+            />
+            <u-icon slot="right" name="arrow-right"></u-icon>
+          </u-form-item>
 
-        <!-- 标题 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">问题标题</text>
-            <text class="required-mark">*</text>
-          </view>
-          <u-input
-            v-model="formData.title"
-            placeholder="请简要描述问题"
-            :border="false"
-            :custom-style="inputStyle"
-            :maxlength="50"
-          />
-        </view>
+          <!-- 问题分类 -->
+          <u-form-item label="问题分类" prop="categoryId" required borderBottom @click="showCategoryActionSheet = true">
+            <u-input
+              v-model="selectedCategoryName"
+              placeholder="请选择问题分类"
+              disabled
+              disabledColor="#ffffff"
+              border="none"
+              :custom-style="inputStyle"
+            />
+            <u-icon slot="right" name="arrow-right"></u-icon>
+          </u-form-item>
 
-        <!-- 描述 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">详细描述</text>
-            <text class="required-mark">*</text>
-          </view>
-          <u-textarea
-            v-model="formData.description"
-            placeholder="请详细描述问题情况，以便更好地处理"
-            :border="false"
-            :custom-style="textareaStyle"
-            :maxlength="500"
-          />
-        </view>
+          <!-- 详细描述 -->
+          <u-form-item label="详细描述" prop="description" required borderBottom>
+            <u-textarea v-model="formData.description" placeholder="请详细描述问题情况，以便更好地处理" border="none"
+              :custom-style="textareaStyle" :maxlength="500" count />
+          </u-form-item>
 
-        <!-- 位置 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">位置信息</text>
-            <text class="optional-mark">可选</text>
-          </view>
-          <u-input
-            v-model="formData.location"
-            placeholder="请输入具体位置"
-            :border="false"
-            :custom-style="inputStyle"
-          />
-        </view>
+          <!-- 图片上传 -->
+          <u-form-item label="图片上传" prop="attachments" borderBottom>
+            <u-upload :fileList="fileList" @afterRead="onAfterRead"
+              @delete="onDelete" :maxCount="9" :maxSize="5 * 1024 * 1024" :previewFullImage="true" :deletable="true"
+              multiple />
+          </u-form-item>
 
-        <!-- 图片上传 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">图片上传</text>
-            <text class="optional-mark">可选</text>
-          </view>
-          <text class="form-hint">最多上传 9 张</text>
-          <view class="image-upload-area">
-            <view v-for="(attachment, index) in uploadedAttachments" :key="attachment.id" class="uploaded-image">
-              <image
-                :src="attachment.url"
-                mode="aspectFill"
-                class="upload-image"
-                @tap="previewImage(index)"
-              />
-              <view class="image-remove" @tap="removeImage(index)">×</view>
-            </view>
-            <view v-if="uploadedAttachments.length < 9" class="upload-add" @tap="chooseImage">
-              <text class="upload-add-icon">+</text>
-              <text class="upload-add-text">添加</text>
-            </view>
-          </view>
-        </view>
+          <!-- 提交者信息 -->
 
-        <!-- 优先级 -->
-        <view class="form-item">
-          <view class="form-label-row">
-            <text class="form-label">优先级</text>
-          </view>
-          <u-radio-group v-model="formData.priority" @change="onPriorityChange">
-            <view class="priority-options">
-              <view
-                :class="['priority-option', { active: formData.priority === 'NORMAL' }]"
-                @tap="formData.priority = 'NORMAL'"
-              >
-                <view class="priority-radio">
-                  <view v-if="formData.priority === 'NORMAL'" class="priority-radio-dot"></view>
-                </view>
-                <text class="priority-text">普通</text>
-              </view>
-              <view
-                :class="['priority-option', { active: formData.priority === 'URGENT' }]"
-                @tap="formData.priority = 'URGENT'"
-              >
-                <view class="priority-radio">
-                  <view v-if="formData.priority === 'URGENT'" class="priority-radio-dot"></view>
-                </view>
-                <text class="priority-text">紧急</text>
-              </view>
-            </view>
-          </u-radio-group>
-        </view>
 
-        <!-- 提交按钮 -->
-        <view class="submit-section">
-          <button
-            class="submit-btn"
-            :loading="submitting"
-            :disabled="!isFormValid"
-            @tap="handleSubmit"
-          >
-            提交反馈
-          </button>
-        </view>
+
+
+          <u-form-item v-if="!formData.isAnonymous" label="姓名" prop="submitterName" borderBottom>
+            <u-input v-model="formData.submitterName" placeholder="请输入您的姓名" border="none" :custom-style="inputStyle" />
+          </u-form-item>
+
+          <u-form-item v-if="!formData.isAnonymous" label="手机号" prop="submitterPhone" borderBottom>
+            <u-input v-model="formData.submitterPhone" placeholder="请输入您的手机号" border="none" :custom-style="inputStyle"
+              type="number" :maxlength="11" />
+          </u-form-item>
+          <u-form-item label="匿名提交" prop="isAnonymous" borderBottom>
+            <u-switch v-model="formData.isAnonymous" :active-value="true" :inactive-value="false" />
+          </u-form-item>
+
+
+          <!-- 提交按钮 -->
+          <view class="submit-section">
+            <u-button type="primary" :loading="submitting" @click="handleSubmit" :custom-style="{ width: '100%' }">
+              提交反馈
+            </u-button>
+          </view>
+        </u-form>
       </view>
+
+      <!-- 分类选择 ActionSheet -->
+      <u-action-sheet
+        :show="showCategoryActionSheet"
+        :actions="categoryActions"
+        title="请选择问题分类"
+        @close="showCategoryActionSheet = false"
+        @select="onCategorySelect"
+      />
+
+      <!-- 位置选择 ActionSheet -->
+      <u-action-sheet
+        :show="showAreaActionSheet"
+        :actions="areaActions"
+        title="请选择位置信息"
+        @close="showAreaActionSheet = false"
+        @select="onAreaSelect"
+      />
     </view>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
 import { useTicketStore } from '@/store';
-import { useTabBarStore } from '@/store/modules/tabbar';
-import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
 import PageLayout from '@/components/PageLayout.vue';
 import { useUpload } from '@/composables/useUpload';
 import * as categoryApi from '@/api/category';
-import type { Category, Attachment } from '@/api/types';
-import { Priority } from '@/api/types';
+import * as areaApi from '@/api/area';
+import type { Category, Attachment, PresetArea } from '@/api/types';
 
 const ticketStore = useTicketStore();
-const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();
-const { chooseAndUploadImage, uploading } = useUpload();
+const { uploadFile } = useUpload();
 
 // 表单数据
 const formData = ref({
-  title: '',
+  location: '',
+  presetAreaId: '',
   description: '',
   categoryId: '',
-  location: '',
-  priority: Priority.NORMAL,
+  isAnonymous: false,
+  submitterName: '',
+  submitterPhone: '',
 });
+
+// 表单引用
+const uFormRef = ref();
 
 // 已上传的附件列表
 const uploadedAttachments = ref<Attachment[]>([]);
 
+// u-upload 组件的文件列表（包含本地临时文件和已上传的文件）
+interface FileItem {
+  url: string;
+  status?: 'uploading' | 'success' | 'failed';
+  message?: string;
+}
+const fileList = ref<FileItem[]>([]);
+
 // 分类列表
 const categoryList = ref<Category[]>([]);
 const selectedCategoryName = ref('');
-const showCategoryPicker = ref(false);
+const showCategoryActionSheet = ref(false);
+
+// 位置列表
+const areaList = ref<PresetArea[]>([]);
+const selectedAreaName = ref('');
+const showAreaActionSheet = ref(false);
 
 // 提交状态
 const submitting = ref(false);
 
-// 表单验证
-const isFormValid = computed(() => {
-  return formData.value.title.trim() &&
-         formData.value.description.trim() &&
-         formData.value.categoryId;
+// 分类选项（用于 ActionSheet）
+const categoryActions = computed(() => {
+  return categoryList.value.map(cat => ({
+    name: cat.name,
+    id: cat.id,
+  }));
 });
+
+// 位置选项（用于 ActionSheet）
+const areaActions = computed(() => {
+  return areaList.value.map(area => ({
+    name: area.name,
+    id: area.id,
+  }));
+});
+
+// 表单验证规则
+const rules = {
+  description: [
+    {
+      required: true,
+      message: '请输入详细描述',
+      trigger: ['blur', 'change'],
+    },
+    {
+      min: 5,
+      max: 500,
+      message: '描述长度在 5 到 500 个字符',
+      trigger: ['blur', 'change'],
+    },
+  ],
+  categoryId: [
+    {
+      required: true,
+      message: '请选择问题分类',
+      trigger: ['change'],
+    },
+  ],
+  submitterName: [
+    {
+      required: true,
+      message: '请输入姓名',
+      trigger: ['blur', 'change'],
+    },
+  ],
+  submitterPhone: [
+    {
+      required: true,
+      message: '请输入手机号',
+      trigger: ['blur', 'change'],
+    },
+    {
+      pattern: /^1[3-9]\d{9}$/,
+      message: '请输入正确的手机号',
+      trigger: ['blur', 'change'],
+    },
+  ],
+};
 
 // 极简输入框样式
 const inputStyle = {
@@ -209,6 +222,8 @@ async function loadCategories() {
   try {
     const categories = await categoryApi.getCategoryList({ status: 'ACTIVE' });
     categoryList.value = categories;
+    console.log('加载的分类列表:', categories);
+    console.log('分类选项（categoryActions）:', categoryActions.value);
   } catch (error) {
     console.error('加载分类失败', error);
   }
@@ -216,53 +231,123 @@ async function loadCategories() {
 
 /**
  * 分类选择确认
+ * @param item 选中的分类项
+ * @param index 选中的索引
  */
-function onCategoryConfirm(e: any) {
-  const category = e.value[0];
-  formData.value.categoryId = category.id;
-  selectedCategoryName.value = category.name;
-  showCategoryPicker.value = false;
+function onCategorySelect(item: any, index: number) {
+  console.log('分类选择参数:', { item, index });
+
+  // u-action-sheet 的 @select 事件会传递 action 对象
+  // item 包含 name 和 id 属性
+  if (item && item.id) {
+    formData.value.categoryId = item.id;
+    selectedCategoryName.value = item.name;
+    console.log('已选择分类:', { id: item.id, name: item.name });
+  }
+
+  showCategoryActionSheet.value = false;
 }
 
 /**
- * 优先级选择
+ * 加载位置列表
  */
-function onPriorityChange(e: any) {
-  formData.value.priority = e.detail.value;
-}
-
-/**
- * 选择并上传图片
- */
-async function chooseImage() {
+async function loadAreas() {
   try {
-    const remainingCount = 9 - uploadedAttachments.value.length;
-    if (remainingCount <= 0) {
-      uni.showToast({
-        title: '最多只能上传9张图片',
-        icon: 'none',
+    const areas = await areaApi.getAreaList({ isActive: true });
+    areaList.value = areas;
+    console.log('加载的位置列表:', areas);
+    console.log('位置选项（areaActions）:', areaActions.value);
+  } catch (error) {
+    console.error('加载位置失败', error);
+  }
+}
+
+/**
+ * 位置选择确认
+ * @param item 选中的位置项
+ * @param index 选中的索引
+ */
+function onAreaSelect(item: any, index: number) {
+  console.log('位置选择参数:', { item, index });
+
+  if (item && item.id) {
+    formData.value.presetAreaId = item.id;
+    selectedAreaName.value = item.name;
+    console.log('已选择位置:', { id: item.id, name: item.name });
+  }
+
+  showAreaActionSheet.value = false;
+}
+
+/**
+ * u-upload 组件选择图片后的回调
+ */
+async function onAfterRead(event: any) {
+  try {
+    // u-upload 组件已经让用户选择了文件，直接上传即可
+    // event.file 可能是单个文件对象或文件数组
+    const files = Array.isArray(event.file) ? event.file : [event.file];
+
+    // 记录添加前的 fileList 长度（起始索引）
+    const startIndex = fileList.value.length;
+
+    // 先将本地临时文件添加到 fileList，显示预览
+    files.forEach((f: any) => {
+      fileList.value.push({
+        url: f.url || f.path, // 本地临时路径
+        status: 'uploading',
+        message: '上传中',
       });
-      return;
-    }
+    });
 
     uni.showLoading({ title: '上传中...' });
 
-    const attachments = await chooseAndUploadImage(remainingCount);
+    // 批量上传已选择的文件
+    const uploadPromises = files.map((f: any, index: number) => {
+      const currentIndex = startIndex + index; // 正确的索引计算
+      return uploadFile(f.url || f.path, 'IMAGE').then(attachment => {
+        console.log(`上传成功，索引 ${currentIndex}，URL:`, attachment.url);
+        // 更新 fileList 中对应项的状态和 URL
+        fileList.value[currentIndex] = {
+          url: attachment.url, // 服务器返回的 URL
+          status: 'success',
+          message: '上传成功',
+        };
+        return attachment;
+      });
+    });
+
+    const attachments = await Promise.all(uploadPromises);
     uploadedAttachments.value.push(...attachments);
+
+    console.log('fileList:', fileList.value);
+    console.log('uploadedAttachments:', uploadedAttachments.value);
 
     uni.hideLoading();
     uni.showToast({
-      title: `上传成功，已选择${attachments.length}张图片`,
+      title: '上传成功',
       icon: 'success',
     });
   } catch (error) {
-    console.error('选择图片失败', error);
+    console.error('上传图片失败', error);
     uni.hideLoading();
     uni.showToast({
       title: '上传失败',
       icon: 'error',
     });
+    // 上传失败时，移除对应的 fileList 项
+    fileList.value = fileList.value.filter(item => item.status !== 'uploading');
   }
+}
+
+/**
+ * u-upload 组件删除图片的回调
+ */
+function onDelete(event: any) {
+  const { index } = event;
+  // 同时从 fileList 和 uploadedAttachments 中删除
+  fileList.value.splice(index, 1);
+  uploadedAttachments.value.splice(index, 1);
 }
 
 /**
@@ -287,11 +372,9 @@ function removeImage(index: number) {
  * 提交表单
  */
 async function handleSubmit() {
-  if (!isFormValid.value) {
-    uni.showToast({
-      title: '请填写必填项',
-      icon: 'none',
-    });
+  // 使用 u-form 的 validate 方法进行验证
+  const valid = await uFormRef.value.validate();
+  if (!valid) {
     return;
   }
 
@@ -323,212 +406,33 @@ async function handleSubmit() {
   }
 }
 
-onShow(() => {
-  updateTabBarSelected('/pages/user/submit/index')
-})
-
 onMounted(() => {
   loadCategories();
+  loadAreas();
 });
 </script>
 
 <style scoped>
-/* 页面头部 */
-.page-header {
-  padding: 64rpx 48rpx 48rpx;
-  background: var(--color-white);
-  border-bottom: 1rpx solid var(--border);
-}
-
-.page-title {
-  font-size: 56rpx;
-  font-weight: 200;
-  letter-spacing: 4rpx;
-  color: var(--color-black);
-  display: block;
-}
-
-.page-subtitle {
-  font-size: var(--text-caption);
-  color: var(--text-tertiary);
-  margin-top: 16rpx;
-  display: block;
-}
-
 /* 表单容器 */
 .form-container {
   padding: 48rpx;
   background: var(--color-white);
-}
-
-/* 表单项 */
-.form-item {
-  margin-bottom: 48rpx;
-}
-
-.form-item:last-of-type {
-  margin-bottom: 0;
-}
-
-.form-label-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-bottom: 16rpx;
-}
-
-.form-label {
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-  letter-spacing: 2rpx;
-  font-weight: 500;
-}
-
-.required-mark {
-  font-size: var(--text-tiny);
-  color: var(--color-black);
-  font-weight: 600;
-}
-
-.optional-mark {
-  font-size: var(--text-tiny);
-  color: var(--text-tertiary);
-  font-weight: 400;
-}
-
-.form-hint {
-  font-size: var(--text-tiny);
-  color: var(--text-tertiary);
-  display: block;
-  margin-bottom: 16rpx;
+  padding-bottom: 100rpx;
 }
 
 /* 输入框样式 */
-.form-input-wrapper {
-  background: var(--bg-input);
-  padding: 24rpx;
-  border-radius: var(--radius-sm);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.inputStyle {
+  background: #FAFAFA;
+  border-radius: 4rpx;
+  height: 88rpx;
+  padding: 0 24rpx;
 }
 
-.form-input-text {
-  font-size: var(--text-body);
-  color: var(--text-primary);
-}
-
-.form-input-text.placeholder {
-  color: var(--text-tertiary);
-}
-
-.form-input-arrow {
-  font-size: var(--text-body);
-  color: var(--text-tertiary);
-}
-
-/* 图片上传区域 */
-.image-upload-area {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.uploaded-image {
-  position: relative;
-  width: 160rpx;
-  height: 160rpx;
-}
-
-.upload-image {
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-sm);
-}
-
-.image-remove {
-  position: absolute;
-  top: -8rpx;
-  right: -8rpx;
-  width: 40rpx;
-  height: 40rpx;
-  background: var(--color-black);
-  color: var(--color-white);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  line-height: 1;
-}
-
-.upload-add {
-  width: 160rpx;
-  height: 160rpx;
-  border: 1rpx dashed var(--border);
-  border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.upload-add-icon {
-  font-size: 48rpx;
-  color: var(--text-tertiary);
-  line-height: 1;
-}
-
-.upload-add-text {
-  font-size: var(--text-caption);
-  color: var(--text-tertiary);
-  margin-top: 8rpx;
-}
-
-/* 优先级选项 */
-.priority-options {
-  display: flex;
-  gap: 24rpx;
-}
-
-.priority-option {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 16rpx 24rpx;
-  background: var(--bg-input);
-  border-radius: var(--radius-sm);
-}
-
-.priority-option.active {
-  background: var(--bg-card);
-  border: 1rpx solid var(--color-black);
-}
-
-.priority-radio {
-  width: 32rpx;
-  height: 32rpx;
-  border: 1rpx solid var(--border);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.priority-radio-dot {
-  width: 16rpx;
-  height: 16rpx;
-  background: var(--color-black);
-  border-radius: 50%;
-}
-
-.priority-option.active .priority-radio {
-  border-color: var(--color-black);
-}
-
-.priority-text {
-  font-size: var(--text-body);
-  color: var(--text-primary);
+.textareaStyle {
+  background: #FAFAFA;
+  border-radius: 4rpx;
+  min-height: 200rpx;
+  padding: 20rpx 24rpx;
 }
 
 /* 提交区域 */
@@ -536,20 +440,14 @@ onMounted(() => {
   margin-top: 64rpx;
 }
 
-.submit-btn {
-  width: 100%;
-  padding: 32rpx;
-  background: var(--color-black);
-  color: var(--color-white);
-  font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: 2rpx;
-  text-align: center;
-  border: none;
-  border-radius: 0;
+/* 提交者信息区域 */
+.submitter-section {
+  margin-top: 32rpx;
+  padding-top: 32rpx;
+  border-top: 1rpx solid #F0F0F0;
 }
 
-.submit-btn:disabled {
-  opacity: 0.5;
+.submitter-section .block {
+  margin-bottom: 24rpx;
 }
 </style>

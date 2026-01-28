@@ -143,8 +143,12 @@ export function uploadFile(
         uni.hideLoading();
 
         if (res.statusCode === 201) {
-          const data = JSON.parse(res.data);
-          resolve(data);
+          const response = JSON.parse(res.data);
+          // 后端使用 TransformInterceptor 包装响应，从 data 字段提取实际数据
+          const attachment = response.data || response;
+          console.log('[上传成功] 响应数据:', response);
+          console.log('[上传成功] 附件对象:', attachment);
+          resolve(attachment);
         } else {
           const error = JSON.parse(res.data);
           reject(new Error(error.message || '上传失败'));

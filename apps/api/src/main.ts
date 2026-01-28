@@ -36,6 +36,12 @@ async function bootstrap() {
     origin: corsOrigin === "*" ? "*" : corsOrigin.split(","),
   });
 
+  // 配置静态文件服务（用于访问上传的文件）
+  // uploads 目录位于项目根目录
+  const uploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../../uploads');
+  app.use(express.static(uploadPath));
+  console.log(`📁 静态文件服务: ${uploadPath}`);
+
   // Set global prefix for all REST API routes
   app.setGlobalPrefix('api');
 

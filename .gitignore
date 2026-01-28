@@ -2,6 +2,9 @@
 node_modules/
 .pnpm-store/
 
+apps/**/node_modules/
+apps/**/uni_modules/
+
 # Build outputs
 dist/
 build/
@@ -44,6 +47,9 @@ coverage/
 # Misc
 .cache/
 .temp/
+
+# File uploads
+uploads/
 
 # Claude Code hooks
 .claude/logs/

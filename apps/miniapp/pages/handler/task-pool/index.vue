@@ -3,19 +3,13 @@
     <view class="min-h-screen bg-page flex flex-col">
       <!-- 极简筛选栏 -->
       <view class="px-xl py-md border-b">
-        <view class="flex gap-md">
-          <picker mode="selector" :range="categories" range-key="name" @change="onCategoryChange">
-            <view :class="['filter-item', { active: filter.categoryId }]">
-              <text class="filter-text">{{ selectedCategory }}</text>
-            </view>
-          </picker>
-
-          <picker mode="selector" :range="priorities" range-key="label" @change="onPriorityChange">
-            <view :class="['filter-item', { active: filter.priority }]">
-              <text class="filter-text">{{ selectedPriority }}</text>
-            </view>
-          </picker>
-        </view>
+        <u-subsection
+          :list="filterTabs"
+          :current="currentFilterTab"
+          @change="onFilterTabChange"
+          :active-color="'#000000'"
+          :inactive-color="'#5A5650'"
+        />
       </view>
 
       <!-- 工单列表 -->
@@ -32,72 +26,42 @@
         />
 
         <!-- 极简工单列表 -->
-        <view
-          v-for="(ticket, index) in ticketList"
-          :key="ticket.id"
-          :class="['ticket-list-item animate-fade-in-up', { 'pl-xl pr-xl': true }]"
-          :style="{ animationDelay: `${(index % 5) * 0.05}s` }"
-        >
-          <!-- 内容区域 -->
-          <view @tap="goToDetail(ticket.id)">
-            <!-- 优先级行 -->
-            <view class="ticket-status mb-sm">
-              <view class="flex items-center gap-xs">
-                <view class="priority-dot" :class="ticket.priority === 'URGENT' ? 'urgent' : ''"></view>
-                <text class="ticket-number">{{ ticket.ticketNumber }}</text>
-              </view>
-              <view :class="['priority-badge', getPriorityClass(ticket.priority)]">
-                {{ getPriorityText(ticket.priority) }}
-              </view>
-            </view>
-
-            <!-- 标题和描述 -->
-            <text class="ticket-title mb-sm">{{ ticket.title }}</text>
-            <text class="ticket-description mb-md">{{ ticket.description }}</text>
-
-            <!-- 附件预览 -->
-            <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-sm mb-md">
-              <view
-                v-for="(img, i) in ticket.attachments.slice(0, 3)"
-                :key="i"
-                class="attachment-preview"
-              >
-                <image
-                  :src="img.url"
-                  class="w-full h-full"
-                  mode="aspectFill"
-                />
-              </view>
-            </view>
-
-            <!-- 元信息 -->
-            <view class="flex gap-lg mb-md">
-              <view class="flex items-center gap-xs">
-                <text class="meta-icon">◆</text>
-                <text class="meta-text">{{ ticket.category?.name }}</text>
-              </view>
-              <view class="flex items-center gap-xs">
-                <text class="meta-icon">◷</text>
-                <text class="meta-text">{{ formatTime(ticket.createdAt) }}</text>
-              </view>
-            </view>
-          </view>
-
-          <!-- 接单按钮 -->
-          <button class="accept-btn" @tap.stop="handleAccept(ticket.id)">
-            立即接单
-          </button>
-        </view>
+        <u-cell-group :border="true">
+          <u-cell
+            v-for="(ticket, index) in ticketList"
+            :key="ticket.id"
+            @click="goToDetail(ticket.id)"
+            :title="ticket.ticketNumber"
+            :label="ticket.title"
+          >
+            <template #icon>
+              <u-tag
+                :text="getPriorityText(ticket.priority)"
+                :type="getPriorityTagType(ticket.priority)"
+                size="mini"
+                plain
+              />
+            </template>
+            <template #value>
+              <u-button
+                type="primary"
+                size="small"
+                @click.stop="handleAccept(ticket.id)"
+                text="立即接单"
+              />
+            </template>
+          </u-cell>
+        </u-cell-group>
 
         <!-- 加载状态 -->
         <view v-if="loading" class="flex justify-center py-xl">
           <u-loading-icon mode="circle" />
-          <text class="ml-sm text-body text-secondary">加载中...</text>
+          <u-text class="ml-sm text-body text-secondary" text="加载中..."></u-text>
         </view>
 
         <!-- 没有更多 -->
         <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-xl">
-          <text class="text-caption text-secondary">没有更多了</text>
+          <u-text class="text-caption text-secondary" text="没有更多了"></u-text>
         </view>
       </scroll-view>
     </view>
@@ -107,16 +71,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { useTabBarStore } from '@/store/modules/tabbar';
-import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
 import PageLayout from '@/components/PageLayout.vue';
 import { useTicketStore } from '@/store';
 import { Priority, type Ticket } from '@/api/types';
 import * as categoryApi from '@/api/category';
 
 const ticketStore = useTicketStore();
-const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();
 
 // 筛选条件
 const filter = ref({
@@ -135,6 +95,12 @@ const priorities = ref([
   { value: Priority.URGENT, label: '紧急' },
 ]);
 const selectedPriority = ref('全部优先级');
+
+// 筛选标签（用于 u-subsection）
+const filterTabs = ref([
+  { name: '全部', value: '' },
+]);
+const currentFilterTab = ref(0);
 
 // 列表数据
 const ticketList = computed(() => ticketStore.ticketList);
@@ -175,6 +141,20 @@ function onPriorityChange(e: any) {
   const priority = priorities.value[index];
   filter.value.priority = priority.value;
   selectedPriority.value = priority.label;
+  refresh();
+}
+
+/**
+ * 筛选标签切换
+ */
+function onFilterTabChange(e: any) {
+  const index = e.index || e;
+  currentFilterTab.value = index;
+
+  // 清空筛选条件
+  filter.value.categoryId = filterTabs.value[index].categoryId || '';
+  filter.value.priority = filterTabs.value[index].priority || '';
+
   refresh();
 }
 
@@ -267,6 +247,17 @@ function getPriorityClass(priority: string): string {
     'NORMAL': 'priority-normal',
   };
   return priorityClasses[priority] || 'priority-normal';
+}
+
+/**
+ * 获取优先级标签类型（用于 u-tag）
+ */
+function getPriorityTagType(priority: string): string {
+  const tagTypes: Record<string, string> = {
+    'URGENT': 'error',
+    'NORMAL': 'info',
+  };
+  return tagTypes[priority] || 'info';
 }
 
 /**

@@ -3,14 +3,13 @@
     <view class="min-h-screen bg-nordic-bg-page flex flex-col">
       <!-- 北欧风格分段控件 -->
       <view class="bg-nordic-bg-card p-nordic-6">
-        <view class="flex bg-nordic-bg-input rounded-nordic-lg p-1">
-          <view v-for="tab in tabs" :key="tab.key"
-            class="flex-1 flex items-center justify-center py-2 rounded-nordic-sm transition-all nordic-button-animate"
-            :class="currentTab === tab.key ? 'bg-nordic-bg-card shadow-nordic-sm text-primary' : 'text-nordic-text-secondary'"
-            @tap="switchTab(tab.key)">
-            <text class="font-medium text-nordic-sm">{{ tab.label }}</text>
-          </view>
-        </view>
+        <u-subsection
+          :list="tabs.map(t => ({ name: t.label }))"
+          :current="currentTabIndex"
+          @change="onTabChange"
+          :active-color="'#667eea'"
+          :inactive-color="'#8E8E93'"
+        />
       </view>
 
       <!-- 工单列表 -->
@@ -23,70 +22,80 @@
         />
 
         <!-- 工单卡片 - 北欧风格 -->
-        <view v-for="ticket in ticketList" :key="ticket.id"
-          class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6 nordic-card-hover relative"
-          @tap="goToDetail(ticket.id)">
-          <!-- 卡片头部 -->
-          <view class="flex justify-between items-center mb-nordic-3">
-            <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.ticketNumber }}</text>
+        <u-card
+          v-for="ticket in ticketList"
+          :key="ticket.id"
+          :title="ticket.ticketNumber"
+          :full="true"
+          :thumb="'https://uviewui.com/common/logo.png'"
+          class="mb-nordic-6"
+          @click="goToDetail(ticket.id)"
+        >
+          <template #title>
+            <view class="flex justify-between items-center mb-nordic-3">
+              <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="ticket.ticketNumber"></u-text>
+              <u-tag
+                :text="getStatusText(ticket.status)"
+                :type="getStatusTagType(ticket.status)"
+                size="mini"
+                plain
+              />
+            </view>
+          </template>
+          <template #body>
+            <view class="mb-nordic-4">
+              <u-text class="block text-nordic-lg font-medium text-nordic-text-primary mb-nordic-2" :text="ticket.title"></u-text>
+              <u-text class="block text-nordic-base text-nordic-text-secondary leading-relaxed line-clamp-2" :text="ticket.description"></u-text>
+
+              <!-- 附件预览 -->
+              <scroll-view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-nordic-2 mt-nordic-3" scroll-x>
+                <u-image
+                  v-for="(img, i) in ticket.attachments.slice(0, 3)"
+                  :key="i"
+                  :src="img.url"
+                  width="80rpx"
+                  height="80rpx"
+                  :radius="8"
+                />
+              </scroll-view>
+            </view>
+
+            <!-- 卡片底部 -->
+            <view class="flex flex-wrap gap-nordic-2">
+              <view class="flex items-center gap-2">
+                <u-icon name="folder" size="14" class="text-nordic-base"></u-icon>
+                <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="ticket.category?.name"></u-text>
+              </view>
+              <view class="flex items-center gap-2">
+                <u-icon name="account" size="14" class="text-nordic-base"></u-icon>
+                <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="ticket.createdBy.wxNickname || ticket.createdBy.username"></u-text>
+              </view>
+              <view class="flex items-center gap-2">
+                <u-icon name="clock" size="14" class="text-nordic-base"></u-icon>
+                <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="formatTime(ticket.createdAt)"></u-text>
+              </view>
+            </view>
+
+            <!-- 优先级标记 -->
             <u-tag
-              :text="getStatusText(ticket.status)"
-              :type="getStatusTagType(ticket.status)"
+              v-if="ticket.priority === 'URGENT'"
+              text="紧急"
+              type="error"
               size="mini"
-              plain
+              class="absolute top-nordic-4 right-nordic-4"
             />
-          </view>
-
-          <!-- 卡片内容 -->
-          <view class="mb-nordic-4">
-            <text class="block text-nordic-lg font-medium text-nordic-text-primary mb-nordic-2">{{ ticket.title
-              }}</text>
-            <text class="block text-nordic-base text-nordic-text-secondary leading-relaxed line-clamp-2">{{
-              ticket.description }}</text>
-
-            <!-- 附件预览 -->
-            <view v-if="ticket.attachments && ticket.attachments.length > 0" class="flex gap-nordic-2 mt-nordic-3">
-              <image v-for="(img, i) in ticket.attachments.slice(0, 3)" :key="i" :src="img.url"
-                class="w-20 h-20 rounded-nordic-sm" mode="aspectFill" />
-            </view>
-          </view>
-
-          <!-- 卡片底部 -->
-          <view class="flex flex-wrap gap-nordic-2">
-            <view class="flex items-center gap-2">
-              <text class="text-nordic-base">📁</text>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.category?.name }}</text>
-            </view>
-            <view class="flex items-center gap-2">
-              <text class="text-nordic-base">👤</text>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.createdBy.wxNickname ||
-                ticket.createdBy.username }}</text>
-            </view>
-            <view class="flex items-center gap-2">
-              <text class="text-nordic-base">⏰</text>
-              <text class="text-nordic-xs text-nordic-text-tertiary">{{ formatTime(ticket.createdAt) }}</text>
-            </view>
-          </view>
-
-          <!-- 优先级标记 -->
-          <u-tag
-            v-if="ticket.priority === 'URGENT'"
-            text="紧急"
-            type="error"
-            size="mini"
-            class="absolute top-nordic-4 right-nordic-4"
-          />
-        </view>
+          </template>
+        </u-card>
 
         <!-- 加载状态 -->
         <view v-if="loading" class="flex justify-center py-nordic-4">
           <u-loading-icon mode="circle" />
-          <text class="ml-nordic-2 text-nordic-base text-nordic-text-secondary">加载中...</text>
+          <u-text class="ml-nordic-2 text-nordic-base text-nordic-text-secondary" text="加载中..."></u-text>
         </view>
 
         <!-- 没有更多 -->
         <view v-if="!hasMore && ticketList.length > 0" class="flex justify-center py-nordic-4">
-          <text class="text-nordic-base text-nordic-text-secondary">没有更多了</text>
+          <u-text class="text-nordic-base text-nordic-text-secondary" text="没有更多了"></u-text>
         </view>
       </scroll-view>
     </view>
@@ -95,27 +104,23 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useTabBarStore } from '@/store/modules/tabbar';
-import { useTabBarUpdate } from '@/composables/useTabBarUpdate';
-import PageLayout from '@/components/PageLayout.vue';
 import { onShow } from '@dcloudio/uni-app';
+import PageLayout from '@/components/PageLayout.vue';
 import { useTicketStore, useUserStore } from '@/store';
 import { TicketStatus, type Ticket } from '@/api/types';
 import { getStatusText, getStatusTagType } from '@/utils/tag-helpers';
 
 const ticketStore = useTicketStore();
-const tabBarStore = useTabBarStore();
-const { updateTabBarSelected } = useTabBarUpdate();;
 const userStore = useUserStore();
 
 // 标签页
 const tabs = [
   { key: 'all', label: '全部' },
-  { key: String(TicketStatus.WAIT_ACCEPT), label: '待接单' },
   { key: String(TicketStatus.PROCESSING), label: '处理中' },
   { key: String(TicketStatus.COMPLETED), label: '已完成' },
 ];
 const currentTab = ref('all');
+const currentTabIndex = ref(0);
 
 // 列表数据
 const ticketList = computed(() => ticketStore.ticketList);
@@ -131,12 +136,28 @@ function switchTab(tab: string) {
 }
 
 /**
+ * 标签切换（用于 u-subsection）
+ */
+function onTabChange(e: any) {
+  const index = e.index || e;
+  currentTabIndex.value = index;
+  currentTab.value = tabs[index].key;
+  refresh();
+}
+
+/**
  * 加载工单列表
  */
 async function loadTickets(refresh = false) {
+  console.log('[MyTasks] Loading tickets...');
+  console.log('[MyTasks] User info:', userStore.userInfo);
+  console.log('[MyTasks] User ID:', userStore.userInfo?.id);
+
   const params: any = {
     assignedId: userStore.userInfo!.id,
   };
+
+  console.log('[MyTasks] Request params:', params);
 
   if (currentTab.value !== 'all') {
     params.status = currentTab.value;
