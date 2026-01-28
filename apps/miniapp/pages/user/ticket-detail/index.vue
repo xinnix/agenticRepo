@@ -334,6 +334,8 @@ onLoad((options) => {
 .detail-page {
   min-height: 100vh;
   background: #F2F2F7;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* 加载状态 */
@@ -353,12 +355,18 @@ onLoad((options) => {
 
 /* 内容容器 */
 .content-wrapper {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
   padding: 32rpx;
   padding-bottom: 200rpx;
+  box-sizing: border-box;
 }
 
 /* 卡片通用样式 */
 .card {
+  width: 100%;
+  box-sizing: border-box;
   background: #FFFFFF;
   border-radius: 24rpx;
   padding: 32rpx;
@@ -423,6 +431,7 @@ onLoad((options) => {
 
 /* 进度条 */
 .progress-bar {
+  width: 100%;
   height: 6rpx;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 3rpx;
@@ -441,6 +450,7 @@ onLoad((options) => {
 .progress-steps {
   display: flex;
   justify-content: space-between;
+  width: 100%;
 }
 
 .step-item {
@@ -449,6 +459,7 @@ onLoad((options) => {
   align-items: center;
   gap: 12rpx;
   flex: 1;
+  min-width: 0;
 }
 
 .step-dot {
@@ -479,6 +490,8 @@ onLoad((options) => {
   display: flex;
   flex-direction: column;
   gap: 12rpx;
+  width: 100%;
+  box-sizing: border-box;
   padding: 24rpx 0;
   border-bottom: 2rpx solid #F2F2F7;
 }
@@ -492,6 +505,7 @@ onLoad((options) => {
   font-size: 24rpx;
   color: #8E8E93;
   font-weight: 500;
+  word-break: break-all;
 }
 
 .info-value {
@@ -499,11 +513,13 @@ onLoad((options) => {
   color: #1C1C1E;
   font-weight: 500;
   line-height: 1.6;
+  word-break: break-all;
 }
 
 .info-value.description {
   color: #3A3A3C;
   line-height: 1.8;
+  white-space: pre-wrap;
 }
 
 /* 优先级标签 */
@@ -531,6 +547,8 @@ onLoad((options) => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .image-item {
@@ -538,11 +556,14 @@ onLoad((options) => {
   border-radius: 16rpx;
   overflow: hidden;
   background: #F2F2F7;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .image-thumb {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 /* 处理人信息 */
@@ -551,6 +572,7 @@ onLoad((options) => {
   align-items: center;
   gap: 24rpx;
   margin-bottom: 24rpx;
+  width: 100%;
 }
 
 .handler-avatar {
@@ -558,28 +580,34 @@ onLoad((options) => {
   height: 96rpx;
   border-radius: 50%;
   border: 3rpx solid #F2F2F7;
+  flex-shrink: 0;
 }
 
 .handler-details {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+  flex: 1;
+  min-width: 0;
 }
 
 .handler-name {
   font-size: 30rpx;
   font-weight: 700;
   color: #1C1C1E;
+  word-break: break-all;
 }
 
 .handler-position {
   font-size: 24rpx;
   color: #8E8E93;
+  word-break: break-all;
 }
 
 .action-btns {
   display: flex;
   gap: 16rpx;
+  width: 100%;
 }
 
 .action-btn {
@@ -592,6 +620,8 @@ onLoad((options) => {
   border-radius: 16rpx;
   font-size: 28rpx;
   font-weight: 700;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .action-btn.primary {
@@ -623,6 +653,8 @@ onLoad((options) => {
   display: flex;
   gap: 16rpx;
   margin-top: 32rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .action-btn-large {
@@ -634,6 +666,8 @@ onLoad((options) => {
   border-radius: 16rpx;
   font-size: 30rpx;
   font-weight: 700;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .action-btn-large.primary {
