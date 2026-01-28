@@ -96,6 +96,13 @@ const ticketStore = useTicketStore();
 // 当前筛选状态
 const currentStatus = ref<string>('all');
 
+// 全量统计数据（不受筛选影响）
+const userStats = ref({
+  totalCount: 0,
+  processingCount: 0,
+  completedCount: 0,
+});
+
 // 用户信息
 const avatarUrl = computed(() => {
   return userStore.userInfo?.wxAvatarUrl || userStore.userInfo?.avatar || '/static/logo.png';
@@ -117,12 +124,8 @@ const tickets = computed(() => ticketStore.ticketList);
 // 加载状态
 const hasMore = computed(() => ticketStore.hasMore);
 
-// 统计数据
-const stats = computed(() => ({
-  totalCount: ticketStore.total,
-  processingCount: ticketStore.ticketList.filter(t => t.status === 'PROCESSING').length,
-  completedCount: ticketStore.ticketList.filter(t => t.status === 'COMPLETED').length,
-}));
+// 统计数据（使用全量数据）
+const stats = computed(() => userStats.value);
 
 /**
  * 切换状态筛选
@@ -130,6 +133,39 @@ const stats = computed(() => ({
 function switchStatus(status: string) {
   currentStatus.value = status;
   refresh();
+}
+
+/**
+ * 加载用户统计数据（不受筛选影响）
+ */
+async function loadUserStats() {
+  if (!userStore.userInfo?.id) return;
+
+  try {
+    // 临时保存当前的筛选状态
+    const originalStatus = currentStatus.value;
+
+    // 加载全部工单用于统计
+    await ticketStore.loadTickets({
+      createdById: userStore.userInfo.id,
+      limit: 1000, // 获取足够多的数据用于统计
+    }, true);
+
+    // 计算统计数据
+    const allTickets = ticketStore.ticketList;
+    userStats.value = {
+      totalCount: ticketStore.total,
+      processingCount: allTickets.filter(t => t.status === 'PROCESSING').length,
+      completedCount: allTickets.filter(t => t.status === 'COMPLETED').length,
+    };
+    console.log('[Dashboard] 用户统计数据:', userStats.value);
+
+    // 恢复原来的筛选状态并加载列表
+    currentStatus.value = originalStatus;
+    await loadTickets(true);
+  } catch (error) {
+    console.error('[Dashboard] 加载统计数据失败', error);
+  }
 }
 
 /**
@@ -260,11 +296,13 @@ function formatTime(dateStr: string): string {
 
 onShow(() => {
   uni.hideHomeButton();
-  loadTickets(true);
+  // 每次显示页面时都重新加载统计数据，确保数据是最新的
+  loadUserStats();
 });
 
 onMounted(() => {
-  loadTickets(true);
+  // 首次加载时，加载统计数据和列表
+  loadUserStats();
 });
 </script>
 
