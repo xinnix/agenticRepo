@@ -4,7 +4,7 @@
       <!-- 北欧风格状态卡片 -->
       <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
         <view class="flex justify-between items-center mb-10">
-          <text class="text-nordic-xs text-nordic-text-tertiary">{{ ticket.ticketNumber }}</text>
+          <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="ticket.ticketNumber"></u-text>
           <u-tag
             :text="getStatusText(ticket.status)"
             :type="getStatusTagType(ticket.status)"
@@ -14,120 +14,83 @@
         </view>
 
         <!-- 北欧风格进度条 -->
-        <view class="flex justify-between relative">
-          <!-- 进度线 -->
-          <view class="absolute top-4 left-4 right-4 h-0.5 bg-nordic-border">
-            <view class="h-full bg-primary transition-all" :style="{ width: progressPercent + '%' }"></view>
-          </view>
-
-          <!-- 步骤点 -->
-          <view
-            v-for="(step, index) in steps"
-            :key="index"
-            class="flex flex-col items-center relative z-1"
-          >
-            <view
-              class="w-8 h-8 rounded-full flex items-center justify-center border-2 mb-nordic-2"
-              :class="currentIndex >= index ? 'bg-primary border-primary text-nordic-bg-card' : 'bg-nordic-bg-card border-nordic-border text-nordic-text-tertiary'"
-            >
-              <text v-if="currentIndex > index" class="text-sm">✓</text>
-              <text v-else class="text-xs">{{ index + 1 }}</text>
-            </view>
-            <text class="text-nordic-xs" :class="currentIndex >= index ? 'text-primary' : 'text-nordic-text-tertiary'">{{ step.label }}</text>
-          </view>
-        </view>
+        <u-steps :current="currentIndex" :list="steps" direction="row" />
       </view>
 
       <!-- 工单信息 -->
       <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4">工单信息</text>
+        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="工单信息"></u-text>
 
-        <view class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">问题标题</text>
-          <text class="block text-nordic-base text-nordic-text-primary">{{ ticket.title }}</text>
-        </view>
-
-        <view class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">详细描述</text>
-          <text class="block text-nordic-base text-nordic-text-primary leading-relaxed whitespace-pre-wrap">{{ ticket.description }}</text>
-        </view>
-
-        <view class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">问题分类</text>
-          <text class="block text-nordic-base text-nordic-text-primary">{{ ticket.category?.name }}</text>
-        </view>
-
-        <view v-if="ticket.location" class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">位置信息</text>
-          <text class="block text-nordic-base text-nordic-text-primary">{{ ticket.location }}</text>
-        </view>
-
-        <view class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">优先级</text>
-          <u-tag
-            :text="getPriorityText(ticket.priority)"
-            :type="getPriorityTagType(ticket.priority)"
-            size="mini"
-            :plain="getPriorityTagPlain(ticket.priority)"
-          />
-        </view>
-
-        <view class="mb-nordic-6">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-2">提交时间</text>
-          <text class="block text-nordic-base text-nordic-text-primary">{{ formatDateTime(ticket.createdAt) }}</text>
-        </view>
+        <u-cell-group :border="false">
+          <u-cell title="问题标题" :value="ticket.title"></u-cell>
+          <u-cell title="详细描述" :value="ticket.description" :label="ticket.description"></u-cell>
+          <u-cell title="问题分类" :value="ticket.category?.name"></u-cell>
+          <u-cell v-if="ticket.location" title="位置信息" :value="ticket.location"></u-cell>
+          <u-cell title="优先级">
+            <template #value>
+              <u-tag
+                :text="getPriorityText(ticket.priority)"
+                :type="getPriorityTagType(ticket.priority)"
+                size="mini"
+                :plain="getPriorityTagPlain(ticket.priority)"
+              />
+            </template>
+          </u-cell>
+          <u-cell title="提交时间" :value="formatDateTime(ticket.createdAt)"></u-cell>
+        </u-cell-group>
 
         <!-- 附件 -->
         <view v-if="ticket.attachments && ticket.attachments.length > 0" class="mt-nordic-6 pt-nordic-4 border-t border-nordic-border">
-          <text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-3">相关图片</text>
-          <view class="flex flex-wrap gap-nordic-2">
-            <image
-              v-for="(img, index) in ticket.attachments"
-              :key="index"
-              :src="img.url"
-              class="w-40 h-40 rounded-nordic-sm"
-              mode="aspectFill"
-              @tap="previewImage(ticket.attachments!, index)"
-            />
-          </view>
+          <u-text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-3" text="相关图片"></u-text>
+          <u-scroll-list>
+            <view class="flex flex-wrap gap-nordic-2">
+              <u-image
+                v-for="(img, index) in ticket.attachments"
+                :key="index"
+                :src="img.url"
+                width="160rpx"
+                height="160rpx"
+                :radius="8"
+                @click="previewImage(ticket.attachments!, index)"
+              />
+            </view>
+          </u-scroll-list>
         </view>
       </view>
 
       <!-- 处理人信息 -->
       <view v-if="ticket.assignedTo" class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4">处理人信息</text>
+        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="处理人信息"></u-text>
         <view class="flex gap-nordic-4 mb-nordic-6">
-          <image
-            class="w-25 h-25 rounded-full"
+          <u-avatar
             :src="ticket.assignedTo.wxAvatarUrl || ticket.assignedTo.avatar || '/static/logo.png'"
+            size="100rpx"
           />
           <view class="flex flex-col justify-center">
-            <text class="text-nordic-base font-medium text-nordic-text-primary mb-nordic-2">
-              {{ ticket.assignedTo.wxNickname || ticket.assignedTo.username }}
-            </text>
-            <text v-if="ticket.assignedTo.position" class="text-nordic-sm text-nordic-text-secondary">
-              {{ ticket.assignedTo.position }}
-            </text>
+            <u-text class="text-nordic-base font-medium text-nordic-text-primary mb-nordic-2"
+              :text="ticket.assignedTo.wxNickname || ticket.assignedTo.username">
+            </u-text>
+            <u-text v-if="ticket.assignedTo.position" class="text-nordic-sm text-nordic-text-secondary"
+              :text="ticket.assignedTo.position">
+            </u-text>
           </view>
         </view>
         <u-button
           type="success"
           size="large"
           @click="makeCall"
-        >
-          📞 联系处理人
-        </u-button>
+          text="联系处理人"
+          :icon="'phone'"
+        />
       </view>
 
       <!-- 评价信息 -->
       <view v-if="ticket.rating" class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4">我的评价</text>
-        <view class="mb-nordic-3">
-          <text v-for="i in 5" :key="i" class="text-5xl mr-1">
-            {{ i <= ticket.rating ? '⭐' : '☆' }}
-          </text>
-        </view>
-        <text v-if="ticket.feedback" class="block text-nordic-base text-nordic-text-secondary leading-relaxed">{{ ticket.feedback }}</text>
+        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="我的评价"></u-text>
+        <u-rate v-model="ticket.rating" :readonly="true" />
+        <u-text v-if="ticket.feedback" class="block text-nordic-base text-nordic-text-secondary leading-relaxed mt-nordic-3"
+          :text="ticket.feedback">
+        </u-text>
       </view>
 
       <!-- 操作按钮 -->
@@ -138,9 +101,8 @@
           size="large"
           @click="goToRate"
           :custom-style="{ flex: 1 }"
-        >
-          立即评价
-        </u-button>
+          text="立即评价"
+        />
 
         <u-button
           v-if="ticket.status === 'COMPLETED' && !ticket.rating"
@@ -149,22 +111,22 @@
           plain
           @click="closeTicket"
           :custom-style="{ flex: 1 }"
-        >
-          关闭工单
-        </u-button>
+          text="关闭工单"
+        />
       </view>
     </scroll-view>
 
     <!-- 加载状态 -->
     <view v-else class="flex flex-col items-center justify-center h-screen">
       <u-loading-icon mode="circle" size="60" />
-      <text class="mt-nordic-3 text-nordic-base text-nordic-text-secondary">加载中...</text>
+      <u-text class="mt-nordic-3 text-nordic-base text-nordic-text-secondary" text="加载中..."></u-text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { useTicketStore } from '@/store';
 import { TicketStatus, type Ticket } from '@/api/types';
 import {
@@ -204,24 +166,35 @@ const progressPercent = computed(() => {
 /**
  * 加载工单详情
  */
-async function loadDetail() {
-  // 使用 uni.getCurrentInstance() 获取页面实例和参数
-  const instance = getCurrentInstance()
-  const options = instance?.page?.$page?.options || {}
-
-  if (options.id) {
-    ticketId.value = options.id;
-    try {
-      ticket.value = await ticketStore.loadTicketDetail(options.id);
-    } catch (error) {
-      console.error('加载工单详情失败', error);
-      uni.showToast({
-        title: '加载失败',
-        icon: 'error',
-      });
-    }
+async function loadDetail(id: string) {
+  try {
+    console.log('[TicketDetail] 开始加载工单详情, ID:', id);
+    ticket.value = await ticketStore.loadTicketDetail(id);
+    console.log('[TicketDetail] 工单详情加载成功:', ticket.value);
+  } catch (error) {
+    console.error('[TicketDetail] 加载工单详情失败', error);
+    uni.showToast({
+      title: '加载失败',
+      icon: 'error',
+    });
   }
 }
+
+// 使用 onLoad 获取页面参数
+onLoad((options) => {
+  console.log('[TicketDetail] 页面参数:', options);
+
+  if (options?.id) {
+    ticketId.value = options.id;
+    loadDetail(options.id);
+  } else {
+    console.error('[TicketDetail] 缺少工单ID参数');
+    uni.showToast({
+      title: '参数错误',
+      icon: 'error',
+    });
+  }
+});
 
 /**
  * 预览图片
@@ -290,10 +263,6 @@ function formatDateTime(dateStr: string) {
   const date = new Date(dateStr);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
-
-onMounted(() => {
-  loadDetail();
-});
 </script>
 
 <style scoped>
