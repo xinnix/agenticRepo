@@ -92,10 +92,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useTicketStore } from '@/store';
+import { useUserStore } from '@/store';
 import PageLayout from '@/components/PageLayout.vue';
 import { TicketStatus, type Ticket } from '@/api/types';
 
 const ticketStore = useTicketStore();
+const userStore = useUserStore();
 
 // 标签页 - u-tabs 需要使用这种格式
 const tabs = [
@@ -136,7 +138,9 @@ function switchTab(tab: string) {
  * 加载工单列表
  */
 async function loadTickets(refresh = false) {
-  const params: any = {};
+  const params: any = {
+    createdById: userStore.userInfo?.id,
+  };
 
   if (currentTab.value !== 'all') {
     params.status = currentTab.value;

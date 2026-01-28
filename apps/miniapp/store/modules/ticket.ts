@@ -35,6 +35,8 @@ export const useTicketStore = defineStore('ticket', () => {
 
     loading.value = true;
 
+    console.log('[TicketStore] 开始加载工单列表:', { params, page: page.value, refresh });
+
     try {
       const response = await ticketApi.getTicketList({
         page: page.value,
@@ -42,7 +44,38 @@ export const useTicketStore = defineStore('ticket', () => {
         ...params,
       });
 
-      const newData = response.data || [];
+      console.log('[TicketStore] API 返回数据:', response);
+
+      // 处理多种可能的响应格式
+      let newData: Ticket[] = [];
+      let totalCount = 0;
+
+      // 格式1: 数组 (直接返回的数据)
+      if (Array.isArray(response)) {
+        newData = response;
+        totalCount = response.length;
+      }
+      // 格式2: { data: [], total } (后端返回的分页对象)
+      else if (response.data && Array.isArray(response.data)) {
+        newData = response.data;
+        totalCount = response.total || 0;
+      }
+      // 格式3: { items: [], total }
+      else if (response.items && Array.isArray(response.items)) {
+        newData = response.items;
+        totalCount = response.total || 0;
+      }
+      // 兼容旧格式
+      else {
+        newData = response.data || [];
+        totalCount = response.total || response.meta?.total || 0;
+      }
+
+      console.log('[TicketStore] 解析后的数据:', {
+        newData,
+        newDataLength: newData.length,
+        totalCount,
+      });
 
       if (refresh) {
         ticketList.value = newData;
@@ -50,9 +83,15 @@ export const useTicketStore = defineStore('ticket', () => {
         ticketList.value.push(...newData);
       }
 
-      total.value = response.meta?.total || 0;
+      total.value = totalCount;
       hasMore.value = ticketList.value.length < total.value;
       lastParams = params;
+
+      console.log('[TicketStore] 更新后的状态:', {
+        ticketList长度: ticketList.value.length,
+        total: total.value,
+        hasMore: hasMore.value,
+      });
 
       page.value++;
     } catch (error) {

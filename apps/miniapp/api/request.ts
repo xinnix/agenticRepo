@@ -124,11 +124,17 @@ export function request<T = any>(config: RequestConfig): Promise<T> {
           uni.hideLoading();
         }
 
+        console.log('[Request Response] ========================================');
+        console.log('[Request Response] Status:', res.statusCode);
+        console.log('[Request Response] Raw data:', res.data);
+        console.log('[Request Response] ========================================');
+
         // 2xx 状态码
         if (res.statusCode >= 200 && res.statusCode < 300) {
           // 后端使用 TransformInterceptor 包装响应
           // 如果响应包含 data 属性，则提取 data 字段作为实际数据
           const actualData = res.data?.data !== undefined ? res.data.data : res.data;
+          console.log('[Request Actual Data]:', actualData);
           resolve(actualData as T);
           return;
         }
@@ -182,7 +188,19 @@ export function request<T = any>(config: RequestConfig): Promise<T> {
  * GET 请求
  */
 export function get<T = any>(url: string, data?: any, config?: Partial<RequestConfig>): Promise<T> {
-  return request<T>({ url, method: 'GET', data, ...config });
+  // 对于 GET 请求，将参数转换为查询字符串
+  let finalUrl = url;
+  if (data && Object.keys(data).length > 0) {
+    const queryParams = Object.keys(data)
+      .filter(key => data[key] !== undefined && data[key] !== null)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+      .join('&');
+    finalUrl = `${url}${url.includes('?') ? '&' : '?'}${queryParams}`;
+    console.log('[GET Request] URL:', finalUrl);
+    console.log('[GET Request] Params:', data);
+  }
+
+  return request<T>({ url: finalUrl, method: 'GET', ...config });
 }
 
 /**

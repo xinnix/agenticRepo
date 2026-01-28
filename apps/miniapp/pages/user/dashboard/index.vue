@@ -136,7 +136,10 @@ function switchStatus(status: string) {
  * 加载用户反馈列表
  */
 async function loadTickets(refresh = false) {
-  if (!userStore.userInfo?.id) return;
+  if (!userStore.userInfo?.id) {
+    console.warn('[Dashboard] 用户信息未加载，跳过加载反馈列表');
+    return;
+  }
 
   const params: any = {
     createdById: userStore.userInfo.id,
@@ -147,11 +150,19 @@ async function loadTickets(refresh = false) {
     params.status = currentStatus.value;
   }
 
+  console.log('[Dashboard] 开始加载反馈列表:', { refresh, params });
+
   if (refresh) {
     await ticketStore.refresh(params);
   } else {
     await ticketStore.loadTickets(params);
   }
+
+  console.log('[Dashboard] 反馈列表加载完成:', {
+    列表长度: ticketStore.ticketList.length,
+    总数: ticketStore.total,
+    数据: ticketStore.ticketList,
+  });
 }
 
 /**

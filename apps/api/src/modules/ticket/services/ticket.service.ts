@@ -20,38 +20,51 @@ export class TicketService {
 
   /**
    * 创建工单
+   * 兼容前端提交的数据格式（前端可能不传 title 和 priority）
    */
   async create(data: {
-    title: string;
+    title?: string;
     description?: string;
     categoryId: string;
-    priority: 'NORMAL' | 'URGENT';
+    priority?: 'NORMAL' | 'URGENT';
     locationType?: 'MANUAL' | 'PRESET';
     location?: string | null;
     presetAreaId?: string | null;
     createdById: string;
     attachmentIds?: string[];
     attachmentUrls?: string[]; // 直接上传的OSS URLs
+    // 前端额外字段（忽略）
+    isAnonymous?: boolean;
+    submitterName?: string;
+    submitterPhone?: string;
   }) {
     // 生成工单编号
     const ticketNumber = await this.numberService.generateNumber();
 
+    // 如果没有传 title，使用 description 的前20个字符作为 title
+    const title = data.title || (data.description?.substring(0, 20) || '新工单');
+
+    // 如果没有传 priority，默认为 NORMAL
+    const priority: 'NORMAL' | 'URGENT' = data.priority || 'NORMAL';
+
     // 计算截止时间
-    const deadlineAt = await this.deadlineService.calculateDeadline(data.priority);
+    const deadlineAt = await this.deadlineService.calculateDeadline(priority);
 
     // 创建工单
     const ticket = await this.prisma.ticket.create({
       data: {
         ticketNumber,
-        title: data.title,
+        title,
         description: data.description,
         categoryId: data.categoryId,
-        priority: data.priority,
-        locationType: data.locationType || 'MANUAL',
+        priority,
+        locationType: data.locationType || (data.presetAreaId ? 'PRESET' : 'MANUAL'),
         location: data.location,
         presetAreaId: data.presetAreaId,
         createdById: data.createdById,
         deadlineAt,
+        submitterName: data.submitterName,
+        submitterPhone: data.submitterPhone,
       },
       include: {
         createdBy: { select: { id: true, username: true, firstName: true, lastName: true } },
@@ -161,7 +174,7 @@ export class TicketService {
     }
 
     // 查询总数和数据
-    const [total, data] = await Promise.all([
+    const [total, items] = await Promise.all([
       this.prisma.ticket.count({ where }),
       this.prisma.ticket.findMany({
         where,
@@ -178,7 +191,7 @@ export class TicketService {
     ]);
 
     return {
-      data,
+      data: items,
       total,
       page,
       limit,
@@ -335,20 +348,20 @@ export class TicketService {
       throw new ForbiddenException('只有管理员可以指派工单');
     }
 
-    // 状态校验
-    this.validateTransition(ticket.status, 'WAIT_ACCEPT');
+    // 状态校验：从 WAIT_ASSIGN 直接转到 PROCESSING
+    this.validateTransition(ticket.status, 'PROCESSING');
 
-    // 更新工单
+    // 更新工单 - 指派后直接进入处理中状态
     const updated = await this.prisma.ticket.update({
       where: { id },
       data: {
         assignedId,
-        status: 'WAIT_ACCEPT',
+        status: 'PROCESSING',
       },
     });
 
     // 记录状态历史
-    await this.recordStatusHistory(id, ticket.status, 'WAIT_ACCEPT', currentUser.id, '指派给处理人');
+    await this.recordStatusHistory(id, ticket.status, 'PROCESSING', currentUser.id, '指派给处理人');
 
     return this.getOne(id, currentUser);
   }
@@ -640,9 +653,17 @@ export class TicketService {
   }
 
   /**
-   * 添加工单评论
+   * 添加工单评论/处理记录
    */
-  async addComment(id: string, content: string, currentUser: any) {
+  async addComment(
+    id: string,
+    data: {
+      content?: string;
+      attachmentIds?: string[];
+      attachmentUrls?: string[];
+    },
+    currentUser: any
+  ) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
     });
@@ -659,11 +680,12 @@ export class TicketService {
       commentType = 'USER';
     }
 
+    // 创建评论
     const comment = await this.prisma.comment.create({
       data: {
         ticketId: id,
         userId: currentUser.id,
-        content,
+        content: data.content,
         commentType,
       },
       include: {
@@ -679,7 +701,48 @@ export class TicketService {
       },
     });
 
-    return comment;
+    // 处理附件 - 通过 ID 关联
+    if (data.attachmentIds && data.attachmentIds.length > 0) {
+      await this.prisma.attachment.updateMany({
+        where: { id: { in: data.attachmentIds } },
+        data: { commentId: comment.id, ticketId: id },
+      });
+    }
+
+    // 处理附件 - 通过 URL 创建
+    if (data.attachmentUrls && data.attachmentUrls.length > 0) {
+      for (const url of data.attachmentUrls) {
+        await this.prisma.attachment.create({
+          data: {
+            commentId: comment.id,
+            ticketId: id,
+            url,
+            fileName: this.extractFileNameFromUrl(url),
+            fileSize: 0,
+            mimeType: this.getMimeTypeFromUrl(url),
+            type: this.getFileTypeFromUrl(url),
+            uploadedById: currentUser.id,
+          },
+        });
+      }
+    }
+
+    // 返回包含附件的评论
+    return this.prisma.comment.findUnique({
+      where: { id: comment.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        attachments: true,
+      },
+    });
   }
 
   /**
