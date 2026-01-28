@@ -1,126 +1,150 @@
 <template>
-  <view class="min-h-screen bg-nordic-bg-page">
-    <scroll-view class="p-nordic-6" scroll-y v-if="ticket">
-      <!-- 北欧风格状态卡片 -->
-      <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <view class="flex justify-between items-center mb-10">
-          <u-text class="text-nordic-xs text-nordic-text-tertiary" :text="ticket.ticketNumber"></u-text>
-          <u-tag
-            :text="getStatusText(ticket.status)"
-            :type="getStatusTagType(ticket.status)"
-            size="mini"
-            plain
-          />
-        </view>
+  <view class="detail-page">
+    <!-- 加载状态 -->
+    <view v-if="!ticket" class="loading-container">
+      <u-loading-icon mode="circle" size="60" />
+      <text class="loading-text">加载中...</text>
+    </view>
 
-        <!-- 北欧风格进度条 -->
-        <u-steps :current="currentIndex" :list="steps" direction="row" />
-      </view>
-
-      <!-- 工单信息 -->
-      <view class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="工单信息"></u-text>
-
-        <u-cell-group :border="false">
-          <u-cell title="问题标题" :value="ticket.title"></u-cell>
-          <u-cell title="详细描述" :value="ticket.description" :label="ticket.description"></u-cell>
-          <u-cell title="问题分类" :value="ticket.category?.name"></u-cell>
-          <u-cell v-if="ticket.location" title="位置信息" :value="ticket.location"></u-cell>
-          <u-cell title="优先级">
-            <template #value>
-              <u-tag
-                :text="getPriorityText(ticket.priority)"
-                :type="getPriorityTagType(ticket.priority)"
-                size="mini"
-                :plain="getPriorityTagPlain(ticket.priority)"
-              />
-            </template>
-          </u-cell>
-          <u-cell title="提交时间" :value="formatDateTime(ticket.createdAt)"></u-cell>
-        </u-cell-group>
-
-        <!-- 附件 -->
-        <view v-if="ticket.attachments && ticket.attachments.length > 0" class="mt-nordic-6 pt-nordic-4 border-t border-nordic-border">
-          <u-text class="block text-nordic-sm text-nordic-text-secondary mb-nordic-3" text="相关图片"></u-text>
-          <u-scroll-list>
-            <view class="flex flex-wrap gap-nordic-2">
-              <u-image
-                v-for="(img, index) in ticket.attachments"
-                :key="index"
-                :src="img.url"
-                width="160rpx"
-                height="160rpx"
-                :radius="8"
-                @click="previewImage(ticket.attachments!, index)"
-              />
-            </view>
-          </u-scroll-list>
-        </view>
-      </view>
-
-      <!-- 处理人信息 -->
-      <view v-if="ticket.assignedTo" class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="处理人信息"></u-text>
-        <view class="flex gap-nordic-4 mb-nordic-6">
-          <u-avatar
-            :src="ticket.assignedTo.wxAvatarUrl || ticket.assignedTo.avatar || '/static/logo.png'"
-            size="100rpx"
-          />
-          <view class="flex flex-col justify-center">
-            <u-text class="text-nordic-base font-medium text-nordic-text-primary mb-nordic-2"
-              :text="ticket.assignedTo.wxNickname || ticket.assignedTo.username">
-            </u-text>
-            <u-text v-if="ticket.assignedTo.position" class="text-nordic-sm text-nordic-text-secondary"
-              :text="ticket.assignedTo.position">
-            </u-text>
+    <!-- 工单详情内容 -->
+    <scroll-view v-else class="content-wrapper" scroll-y>
+      <!-- 工单编号卡片 -->
+      <view class="card ticket-number-card">
+        <view class="card-header">
+          <text class="ticket-number">#{{ ticket.ticketNumber }}</text>
+          <view class="status-badge" :class="getStatusClass(ticket.status)">
+            <text>{{ getStatusText(ticket.status) }}</text>
           </view>
         </view>
-        <u-button
-          type="success"
-          size="large"
-          @click="makeCall"
-          text="联系处理人"
-          :icon="'phone'"
-        />
+        <view class="progress-bar">
+          <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+        </view>
+        <view class="progress-steps">
+          <view
+            v-for="(step, index) in steps"
+            :key="index"
+            class="step-item"
+            :class="{ active: index <= currentIndex }"
+          >
+            <view class="step-dot"></view>
+            <text class="step-label">{{ step.label }}</text>
+          </view>
+        </view>
       </view>
 
-      <!-- 评价信息 -->
-      <view v-if="ticket.rating" class="bg-nordic-bg-card rounded-nordic-lg shadow-nordic-sm p-nordic-6 mb-nordic-6">
-        <u-text class="block text-nordic-h3 font-medium text-nordic-text-primary mb-nordic-4" text="我的评价"></u-text>
-        <u-rate v-model="ticket.rating" :readonly="true" />
-        <u-text v-if="ticket.feedback" class="block text-nordic-base text-nordic-text-secondary leading-relaxed mt-nordic-3"
-          :text="ticket.feedback">
-        </u-text>
+      <!-- 工单信息卡片 -->
+      <view class="card">
+        <view class="card-title">工单信息</view>
+
+        <view class="info-row">
+          <text class="info-label">问题标题</text>
+          <text class="info-value">{{ ticket.title }}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">详细描述</text>
+          <text class="info-value description">{{ ticket.description }}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">问题分类</text>
+          <text class="info-value">{{ ticket.category?.name || '未分类' }}</text>
+        </view>
+
+        <view v-if="ticket.location" class="info-row">
+          <text class="info-label">位置信息</text>
+          <text class="info-value">{{ ticket.location }}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">优先级</text>
+          <view class="priority-tag" :class="getPriorityClass(ticket.priority)">
+            <text>{{ getPriorityText(ticket.priority) }}</text>
+          </view>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">提交时间</text>
+          <text class="info-value">{{ formatDateTime(ticket.createdAt) }}</text>
+        </view>
       </view>
 
-      <!-- 操作按钮 -->
-      <view class="flex gap-nordic-3">
-        <u-button
+      <!-- 图片附件卡片 -->
+      <view v-if="ticket.attachments && ticket.attachments.length > 0" class="card">
+        <view class="card-title">相关图片</view>
+        <view class="image-grid">
+          <view
+            v-for="(img, index) in ticket.attachments"
+            :key="index"
+            class="image-item"
+            @tap="previewImage(ticket.attachments!, index)"
+          >
+            <image class="image-thumb" :src="img.url" mode="aspectFill" />
+          </view>
+        </view>
+      </view>
+
+      <!-- 处理人信息卡片 -->
+      <view v-if="ticket.assignedTo" class="card">
+        <view class="card-title">处理人信息</view>
+        <view class="handler-info">
+          <image
+            class="handler-avatar"
+            :src="ticket.assignedTo.wxAvatarUrl || ticket.assignedTo.avatar || '/static/logo.png'"
+            mode="aspectFill"
+          />
+          <view class="handler-details">
+            <text class="handler-name">{{ ticket.assignedTo.wxNickname || ticket.assignedTo.username }}</text>
+            <text v-if="ticket.assignedTo.position" class="handler-position">{{ ticket.assignedTo.position }}</text>
+          </view>
+        </view>
+        <view class="action-btns">
+          <view class="action-btn primary" @tap="makeCall">
+            <u-icon name="phone" size="20" color="#FFFFFF"></u-icon>
+            <text>联系处理人</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 评价信息卡片 -->
+      <view v-if="ticket.rating" class="card">
+        <view class="card-title">我的评价</view>
+        <view class="rating-section">
+          <view class="rating-stars">
+            <u-icon
+              v-for="i in 5"
+              :key="i"
+              name="star-fill"
+              size="24"
+              :color="i <= ticket.rating ? '#FF9500' : '#E5E5E5'"
+            />
+          </view>
+          <text v-if="ticket.feedback" class="feedback-text">{{ ticket.feedback }}</text>
+        </view>
+      </view>
+
+      <!-- 底部操作按钮 -->
+      <view class="bottom-actions">
+        <view
           v-if="ticket.status === 'COMPLETED'"
-          type="primary"
-          size="large"
-          @click="goToRate"
-          :custom-style="{ flex: 1 }"
-          text="立即评价"
-        />
+          class="action-btn-large primary"
+          @tap="goToRate"
+        >
+          <text>立即评价</text>
+        </view>
 
-        <u-button
+        <view
           v-if="ticket.status === 'COMPLETED' && !ticket.rating"
-          type="primary"
-          size="large"
-          plain
-          @click="closeTicket"
-          :custom-style="{ flex: 1 }"
-          text="关闭工单"
-        />
+          class="action-btn-large outline"
+          @tap="closeTicket"
+        >
+          <text>关闭工单</text>
+        </view>
       </view>
-    </scroll-view>
 
-    <!-- 加载状态 -->
-    <view v-else class="flex flex-col items-center justify-center h-screen">
-      <u-loading-icon mode="circle" size="60" />
-      <u-text class="mt-nordic-3 text-nordic-base text-nordic-text-secondary" text="加载中..."></u-text>
-    </view>
+      <!-- 底部占位 -->
+      <view class="bottom-spacer"></view>
+    </scroll-view>
   </view>
 </template>
 
@@ -129,13 +153,6 @@ import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useTicketStore } from '@/store';
 import { TicketStatus, type Ticket } from '@/api/types';
-import {
-  getStatusText,
-  getStatusTagType,
-  getPriorityText,
-  getPriorityTagType,
-  getPriorityTagPlain,
-} from '@/utils/tag-helpers';
 
 const ticketStore = useTicketStore();
 
@@ -179,22 +196,6 @@ async function loadDetail(id: string) {
     });
   }
 }
-
-// 使用 onLoad 获取页面参数
-onLoad((options) => {
-  console.log('[TicketDetail] 页面参数:', options);
-
-  if (options?.id) {
-    ticketId.value = options.id;
-    loadDetail(options.id);
-  } else {
-    console.error('[TicketDetail] 缺少工单ID参数');
-    uni.showToast({
-      title: '参数错误',
-      icon: 'error',
-    });
-  }
-});
 
 /**
  * 预览图片
@@ -247,7 +248,7 @@ async function closeTicket() {
             title: '已关闭',
             icon: 'success',
           });
-          loadDetail();
+          await loadDetail(ticketId.value);
         } catch (error) {
           console.error('关闭失败', error);
         }
@@ -257,26 +258,398 @@ async function closeTicket() {
 }
 
 /**
+ * 获取状态文本
+ */
+function getStatusText(status: TicketStatus): string {
+  const statusMap: Record<string, string> = {
+    WAIT_ASSIGN: '待指派',
+    WAIT_ACCEPT: '待接单',
+    PROCESSING: '处理中',
+    COMPLETED: '已完成',
+    CLOSED: '已关闭',
+    CANCELLED: '已取消',
+  };
+  return statusMap[status] || status;
+}
+
+/**
+ * 获取状态样式类
+ */
+function getStatusClass(status: TicketStatus): string {
+  const classMap: Record<string, string> = {
+    WAIT_ASSIGN: 'pending',
+    WAIT_ACCEPT: 'pending',
+    PROCESSING: 'processing',
+    COMPLETED: 'completed',
+    CLOSED: 'closed',
+    CANCELLED: 'cancelled',
+  };
+  return classMap[status] || '';
+}
+
+/**
+ * 获取优先级文本
+ */
+function getPriorityText(priority: string): string {
+  const map: Record<string, string> = {
+    NORMAL: '普通',
+    URGENT: '紧急',
+  };
+  return map[priority] || priority;
+}
+
+/**
+ * 获取优先级样式类
+ */
+function getPriorityClass(priority: string): string {
+  return priority === 'URGENT' ? 'urgent' : 'normal';
+}
+
+/**
  * 格式化日期时间
  */
 function formatDateTime(dateStr: string) {
   const date = new Date(dateStr);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
+
+// 使用 onLoad 获取页面参数
+onLoad((options) => {
+  console.log('[TicketDetail] 页面参数:', options);
+
+  if (options?.id) {
+    ticketId.value = options.id;
+    loadDetail(options.id);
+  } else {
+    console.error('[TicketDetail] 缺少工单ID参数');
+    uni.showToast({
+      title: '参数错误',
+      icon: 'error',
+    });
+  }
+});
 </script>
 
 <style scoped>
-.whitespace-pre-wrap {
-  white-space: pre-wrap;
+.detail-page {
+  min-height: 100vh;
+  background: #F2F2F7;
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 24rpx;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.loading-text {
+  font-size: 28rpx;
+  color: #8E8E93;
+}
+
+/* 内容容器 */
+.content-wrapper {
+  padding: 32rpx;
+  padding-bottom: 200rpx;
+}
+
+/* 卡片通用样式 */
+.card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1C1C1E;
+  margin-bottom: 24rpx;
+}
+
+/* 工单编号卡片 */
+.ticket-number-card {
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  color: #FFFFFF;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.ticket-number {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 1rpx;
+}
+
+.status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.status-badge.pending {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+
+.status-badge.processing {
+  background: rgba(255, 149, 0, 0.9);
+  color: #FFFFFF;
+}
+
+.status-badge.completed {
+  background: rgba(52, 199, 89, 0.9);
+  color: #FFFFFF;
+}
+
+.status-badge.closed,
+.status-badge.cancelled {
+  background: rgba(142, 142, 147, 0.5);
+  color: #FFFFFF;
+}
+
+/* 进度条 */
+.progress-bar {
+  height: 6rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3rpx;
+  overflow: hidden;
+  margin-bottom: 32rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #FFFFFF;
+  border-radius: 3rpx;
+  transition: width 0.3s;
+}
+
+/* 进度步骤 */
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+}
+
+.step-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s;
+}
+
+.step-item.active .step-dot {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.2);
+}
+
+.step-label {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.step-item.active .step-label {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* 信息行 */
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #F2F2F7;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.info-label {
+  font-size: 24rpx;
+  color: #8E8E93;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 28rpx;
+  color: #1C1C1E;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.info-value.description {
+  color: #3A3A3C;
+  line-height: 1.8;
+}
+
+/* 优先级标签 */
+.priority-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.priority-tag.normal {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007AFF;
+}
+
+.priority-tag.urgent {
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+}
+
+/* 图片网格 */
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.image-item {
+  aspect-ratio: 1;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #F2F2F7;
+}
+
+.image-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+/* 处理人信息 */
+.handler-info {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.handler-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  border: 3rpx solid #F2F2F7;
+}
+
+.handler-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.handler-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1C1C1E;
+}
+
+.handler-position {
+  font-size: 24rpx;
+  color: #8E8E93;
+}
+
+.action-btns {
+  display: flex;
+  gap: 16rpx;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.action-btn.primary {
+  background: #007AFF;
+  color: #FFFFFF;
+  box-shadow: 0 8rpx 24rpx rgba(0, 122, 255, 0.3);
+}
+
+/* 评价区域 */
+.rating-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 8rpx;
+}
+
+.feedback-text {
+  font-size: 28rpx;
+  color: #3A3A3C;
+  line-height: 1.6;
+}
+
+/* 底部操作按钮 */
+.bottom-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 32rpx;
+}
+
+.action-btn-large {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.action-btn-large.primary {
+  background: #007AFF;
+  color: #FFFFFF;
+  box-shadow: 0 8rpx 32rpx rgba(0, 122, 255, 0.3);
+}
+
+.action-btn-large.outline {
+  background: #FFFFFF;
+  color: #8E8E93;
+  border: 2rpx solid #E5E5E5;
+}
+
+/* 底部占位 */
+.bottom-spacer {
+  height: 40rpx;
 }
 </style>
