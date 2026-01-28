@@ -212,7 +212,8 @@ function goToApplyHandler() {
  * 获取状态文本
  */
 function getStatusText(status: TicketStatus): string {
-  const statusMap: Record<TicketStatus, string> = {
+  const statusMap: Record<string, string> = {
+    WAIT_ASSIGN: '待指派',
     WAIT_ACCEPT: '待接单',
     PROCESSING: '处理中',
     COMPLETED: '已完成',
@@ -226,7 +227,8 @@ function getStatusText(status: TicketStatus): string {
  * 获取状态样式类
  */
 function getStatusClass(status: TicketStatus): string {
-  const classMap: Record<TicketStatus, string> = {
+  const classMap: Record<string, string> = {
+    WAIT_ASSIGN: 'pending',
     WAIT_ACCEPT: 'pending',
     PROCESSING: 'processing',
     COMPLETED: 'completed',
