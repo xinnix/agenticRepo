@@ -169,13 +169,17 @@ export class TicketController {
   }
 
   @Post(':id/comments')
-  @ApiOperation({ summary: '添加工单评论' })
+  @ApiOperation({ summary: '添加工单评论/处理记录' })
   async addComment(
     @Param('id') id: string,
-    @Body() body: { content: string },
+    @Body() body: {
+      content?: string;
+      attachmentIds?: string[];
+      attachmentUrls?: string[];
+    },
     @CurrentUser() user: any,
   ) {
-    return this.ticketService.addComment(id, body.content, user);
+    return this.ticketService.addComment(id, body, user);
   }
 
   @Get(':id/history')

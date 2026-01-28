@@ -67,6 +67,12 @@ const TicketCloseInput = z.object({
   reason: z.string().optional(),
 });
 
+const TicketCommentInput = z.object({
+  content: z.string().optional(),
+  attachmentIds: z.array(z.string()).optional(),
+  attachmentUrls: z.array(z.string()).optional(),
+});
+
 const BatchStatusInput = z.object({
   ticketIds: z.array(z.string()),
   status: z.string(),
@@ -136,6 +142,7 @@ export const ticketRouter = router({
               select: {
                 id: true,
                 username: true,
+                realName: true,
                 firstName: true,
                 lastName: true,
               },
@@ -144,11 +151,13 @@ export const ticketRouter = router({
               select: {
                 id: true,
                 username: true,
+                realName: true,
                 firstName: true,
                 lastName: true,
               },
             },
             category: { select: { id: true, name: true } },
+            presetArea: { select: { id: true, name: true, departmentId: true } },
             attachments: true,
           },
         }),
@@ -176,6 +185,7 @@ export const ticketRouter = router({
           createdBy: true,
           assignedTo: true,
           category: true,
+          presetArea: { select: { id: true, name: true, departmentId: true } },
           attachments: { orderBy: { createdAt: 'asc' } },
           comments: {
             orderBy: { createdAt: 'asc' },
@@ -815,7 +825,7 @@ export const ticketRouter = router({
  * 状态流转规则
  */
 const TICKET_STATE_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  WAIT_ASSIGN: ['WAIT_ACCEPT', 'CLOSED'],
+  WAIT_ASSIGN: ['PROCESSING', 'CLOSED'], // 指派后直接进入处理中
   WAIT_ACCEPT: ['PROCESSING', 'WAIT_ASSIGN', 'CLOSED'],
   PROCESSING: ['COMPLETED', 'WAIT_ASSIGN', 'CLOSED'],
   COMPLETED: ['CLOSED'],

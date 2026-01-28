@@ -164,6 +164,13 @@ export const permissionProcedure = (resource: string, action: string) =>
     // Super admin has all permissions
     // Note: ctx.user.roles is an array of Role objects (from verifyJwtToken)
     const hasSuperAdminRole = ctx.user?.roles?.some((r: any) => r?.slug === 'super_admin') || false;
+    // Handler role can approve handler applications
+    const hasHandlerRole = ctx.user?.roles?.some((r: any) => r?.slug === 'handler') || false;
+
+    // Special case: handler role can approve/reject handler applications
+    if (resource === 'user' && (action === 'update') && hasHandlerRole) {
+      return next();
+    }
 
     if (!hasSuperAdminRole && !userPermissions.includes(permissionString)) {
       throw new TRPCError({

@@ -16,6 +16,12 @@ import {
 
 @Injectable()
 export class AuthService {
+  // 微信 access_token 缓存
+  private wxAccessTokenCache: {
+    token: string;
+    expiresAt: Date;
+  } | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -240,6 +246,13 @@ export class AuthService {
             },
           },
         },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
     });
 
@@ -369,6 +382,13 @@ export class AuthService {
             },
           },
         },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
     });
 
@@ -413,6 +433,13 @@ export class AuthService {
               },
             },
           },
+          department: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
         },
       });
     } else {
@@ -437,6 +464,13 @@ export class AuthService {
                   },
                 },
               },
+            },
+          },
+          department: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
             },
           },
         },
@@ -466,15 +500,54 @@ export class AuthService {
 
   /**
    * 📱 获取微信 access_token（用于获取手机号等接口）
+   * 带缓存机制，避免频繁请求导致 token 冲突
    */
   private async getWxAccessToken(): Promise<string> {
     const wxAppId = process.env.WX_APP_ID;
     const wxAppSecret = process.env.WX_APP_SECRET;
 
-    const response = await axios.get(
-      `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${wxAppId}&secret=${wxAppSecret}`,
-    );
+    if (!wxAppId || !wxAppSecret) {
+      throw new Error('微信配置未设置，请在环境变量中配置 WX_APP_ID 和 WX_APP_SECRET');
+    }
 
-    return response.data.access_token;
+    // 检查缓存是否有效（提前 5 分钟过期以确保安全）
+    const now = new Date();
+    const safeMargin = 5 * 60 * 1000; // 5 分钟
+
+    if (
+      this.wxAccessTokenCache &&
+      this.wxAccessTokenCache.expiresAt > new Date(now.getTime() + safeMargin)
+    ) {
+      console.log('[AuthService] 使用缓存的微信 access_token');
+      return this.wxAccessTokenCache.token;
+    }
+
+    // 获取新的 access_token
+    console.log('[AuthService] 获取新的微信 access_token');
+    try {
+      const response = await axios.get(
+        `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${wxAppId}&secret=${wxAppSecret}`,
+      );
+
+      if (response.data.errcode) {
+        throw new Error(`获取微信 access_token 失败: ${response.data.errmsg}`);
+      }
+
+      const accessToken = response.data.access_token;
+      const expiresIn = response.data.expires_in || 7200; // 默认 2 小时
+
+      // 缓存 access_token
+      this.wxAccessTokenCache = {
+        token: accessToken,
+        expiresAt: new Date(now.getTime() + expiresIn * 1000),
+      };
+
+      console.log('[AuthService] 微信 access_token 已缓存，过期时间:', this.wxAccessTokenCache.expiresAt);
+
+      return accessToken;
+    } catch (error) {
+      Logger.error('获取微信 access_token 失败', error);
+      throw new Error('获取微信 access_token 失败');
+    }
   }
 }

@@ -460,22 +460,25 @@ export class StatisticsService {
     // 并行查询各项统计
     const [
       totalTickets,
-      pendingTickets,
+      waitAcceptTickets,
       processingTickets,
       completedTickets,
       closedTickets,
       overdueTickets,
+      todayCompletedTickets,
+      avgRating,
       recentTickets,
+      processingTicketsList,
     ] = await Promise.all([
       // 总工单数
       this.prisma.ticket.count({ where: timeFilter }),
 
-      // 待接单工单数
+      // 接单池工单数（待接单）
       this.prisma.ticket.count({
-        where: { ...timeFilter, status: 'WAIT_ACCEPT' },
+        where: { status: 'WAIT_ACCEPT' },
       }),
 
-      // 处理中工单数
+      // 处理中工单数（待处理）
       this.prisma.ticket.count({
         where: { ...timeFilter, status: 'PROCESSING' },
       }),
@@ -495,10 +498,38 @@ export class StatisticsService {
         where: { ...timeFilter, isOverdue: true },
       }),
 
+      // 今日完成工单数
+      this.prisma.ticket.count({
+        where: {
+          ...timeFilter,
+          status: 'COMPLETED',
+          completedAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      }),
+
+      // 平均评分
+      this.prisma.ticket.aggregate({
+        where: { ...timeFilter, rating: { not: null } },
+        _avg: { rating: true },
+      }),
+
       // 最近工单
       this.prisma.ticket.findMany({
         where: timeFilter,
         take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          category: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, username: true, firstName: true, lastName: true } },
+        },
+      }),
+
+      // 处理中工单列表（用于 dashboard 显示）
+      this.prisma.ticket.findMany({
+        where: { ...timeFilter, status: 'PROCESSING' },
+        take: 5,
         orderBy: { createdAt: 'desc' },
         include: {
           category: { select: { id: true, name: true } },
@@ -518,27 +549,20 @@ export class StatisticsService {
       },
     });
 
+    // 返回小程序期望的格式
     return {
-      handler: handler
-        ? {
-            id: handler.id,
-            name: [handler.firstName, handler.lastName, `(${handler.username})`]
-              .filter(Boolean)
-              .join(' '),
-          }
-        : null,
-      summary: {
-        totalTickets,
-        pendingTickets,
-        processingTickets,
-        completedTickets,
-        closedTickets,
-        overdueTickets,
-        completionRate: totalTickets > 0
-          ? (((completedTickets + closedTickets) / totalTickets) * 100).toFixed(2)
-          : '0.00',
-      },
-      recentTickets,
+      // 接单池数量（待接单的工单）
+      waitAcceptCount: waitAcceptTickets,
+      // 处理中数量
+      processingCount: processingTickets,
+      // 已完成数量
+      totalCompleted: completedTickets,
+      // 今日完成
+      todayCompleted: todayCompletedTickets,
+      // 平均评分
+      averageRating: avgRating._avg.rating || 0,
+      // 处理中工单列表
+      processingTickets: processingTicketsList,
     };
   }
 

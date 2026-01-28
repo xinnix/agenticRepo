@@ -186,25 +186,35 @@ export class UserController {
       };
     }
 
-    // 检查用户是否已有办事员角色
-    const existingUserRole = await this.prisma.userRole.findUnique({
-      where: {
-        userId_roleId: {
-          userId,
-          roleId: handlerRole.id,
-        },
-      },
+    // 查找普通用户角色
+    const userRole = await this.prisma.role.findUnique({
+      where: { slug: 'user' },
     });
 
     // 使用事务确保数据一致性
     await this.prisma.$transaction(async (tx) => {
-      // 如果用户还没有办事员角色，添加角色
-      if (!existingUserRole) {
-        await tx.userRole.create({
-          data: {
+      // 添加办事员角色
+      await tx.userRole.upsert({
+        where: {
+          userId_roleId: {
             userId,
             roleId: handlerRole.id,
-            assignedBy: null,
+          },
+        },
+        create: {
+          userId,
+          roleId: handlerRole.id,
+          assignedBy: null,
+        },
+        update: {},
+      });
+
+      // 移除普通用户角色（确保用户只有一个角色）
+      if (userRole) {
+        await tx.userRole.deleteMany({
+          where: {
+            userId,
+            roleId: userRole.id,
           },
         });
       }

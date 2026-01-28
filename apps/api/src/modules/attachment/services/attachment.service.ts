@@ -26,7 +26,7 @@ export class AttachmentService {
     ticketId?: string;
     uploadedById: string;
   }) {
-    return this.prisma.attachment.create({
+    const attachment = await this.prisma.attachment.create({
       data: {
         type: data.type,
         url: data.url,
@@ -47,6 +47,43 @@ export class AttachmentService {
         },
       },
     });
+
+    // 如果是 OSS URL，根据配置决定是否生成预览签名 URL
+    // 如果 OSS bucket 是公共读的，不需要签名 URL
+    if (attachment.url.includes('.aliyuncs.com')) {
+      const useSignedUrl = process.env.OSS_USE_SIGNED_URL === 'true';
+
+      if (useSignedUrl) {
+        try {
+          const previewUrl = await this.fileStorage.getPreviewUrl(attachment.url);
+          // 更新记录的 url 为签名 URL
+          return this.prisma.attachment.update({
+            where: { id: attachment.id },
+            data: { url: previewUrl },
+            include: {
+              uploadedBy: {
+                select: {
+                  id: true,
+                  username: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          });
+        } catch (error) {
+          console.error('生成预览 URL 失败:', error);
+          // 如果失败，返回原始 URL
+          return attachment;
+        }
+      } else {
+        // 不使用签名 URL，直接返回原始 URL
+        console.log('[Attachment] OSS bucket 是公共读，不生成签名 URL');
+        return attachment;
+      }
+    }
+
+    return attachment;
   }
 
   /**

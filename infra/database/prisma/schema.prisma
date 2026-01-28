@@ -260,6 +260,10 @@ model Ticket {
   assignedId        String?
   assignedTo        User?         @relation("TicketAssignedTo", fields: [assignedId], references: [id])
 
+  // 提报人信息（匿名提交时填写）
+  submitterName     String?
+  submitterPhone    String?
+
   // 时间限制
   deadlineAt        DateTime?
   completedAt       DateTime?
@@ -322,7 +326,7 @@ model Attachment {
 
 model Comment {
   id              String      @id @default(cuid())
-  content         String      @db.Text
+  content         String?     @db.Text
 
   ticketId        String
   ticket          Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
@@ -331,6 +335,9 @@ model Comment {
   user            User        @relation(fields: [userId], references: [id])
 
   commentType     CommentType @default(USER)
+
+  // 关联的附件（处理记录的图片/视频）
+  attachments     Attachment[]
 
   createdAt       DateTime    @default(now())
 
