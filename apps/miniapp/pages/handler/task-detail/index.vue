@@ -22,19 +22,16 @@
         </view>
 
         <!-- 报修人信息 -->
-        <view class="info-row user-row">
+        <view class="info-row ">
           <text class="info-label">报修人</text>
-          <view class="user-info-inline">
-            <image
-              class="user-avatar-small"
-              :src="ticket.createdBy.wxAvatarUrl || ticket.createdBy.avatar || '/static/logo.png'"
-              mode="aspectFill"
-            />
-            <view class="user-details-inline">
-              <text class="user-name-inline">{{ ticket.createdBy.wxNickname || ticket.createdBy.username }}</text>
-              <text v-if="ticket.createdBy.phone" class="user-phone-inline">{{ ticket.createdBy.phone }}</text>
-            </view>
-          </view>
+          <text class="info-value">
+
+            <text class="user-name-inline">{{ ticket.submitterName || '匿名用户' }}</text>
+            <text v-if="ticket.submitterPhone" class="user-phone-inline">{{ ticket.submitterPhone }}
+              <u-icon name="map" size="16" color="#8E8E93"></u-icon>
+              <text>联系</text></text>
+
+          </text>
         </view>
 
         <view class="info-row">
@@ -66,28 +63,18 @@
         <view v-if="ticket.attachments && ticket.attachments.length > 0" class="attachments-section">
           <text class="section-label">报修图片</text>
           <scroll-view class="image-scroll" scroll-x>
-            <view
-              v-for="(img, index) in ticket.attachments"
-              :key="index"
-              class="attachment-image"
-              @tap="previewImage(ticket.attachments!, index)"
-            >
+            <view v-for="(img, index) in ticket.attachments" :key="index" class="attachment-image"
+              @tap="previewImage(ticket.attachments!, index)">
               <image :src="img.url" mode="aspectFill" />
             </view>
           </scroll-view>
-        </view>
-
-        <!-- 联系按钮 -->
-        <view class="call-btn-inline" @tap="makeCall">
-          <u-icon name="phone" size="18" color="#FFFFFF"></u-icon>
-          <text>联系报修人</text>
         </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="action-buttons">
-        <!-- 待接单状态 -->
-        <view v-if="ticket.status === 'WAIT_ACCEPT'" class="action-btn primary" @tap="handleAccept">
+        <!-- 等待处理状态 -->
+        <view v-if="ticket.status === 'WAIT_ASSIGN'" class="action-btn primary" @tap="handleAccept">
           <text>立即接单</text>
         </view>
 
@@ -96,9 +83,10 @@
           <text>完成工单</text>
         </view>
       </view>
+    </scroll-view>
 
-      <!-- 处理历史（暂时隐藏） -->
-      <!-- <view v-if="ticket.statusHistory && ticket.statusHistory.length > 0" class="history-card">
+    <!-- 处理历史（暂时隐藏） -->
+    <!-- <view v-if="ticket.statusHistory && ticket.statusHistory.length > 0" class="history-card">
         <text class="card-title">处理历史</text>
         <view class="history-list">
           <view
@@ -117,72 +105,63 @@
           </view>
         </view>
       </view> -->
-    </scroll-view>
 
     <!-- 加载状态 -->
     <view v-else class="loading-container">
       <view class="loading-spinner"></view>
       <text class="loading-text">加载中...</text>
     </view>
+  </view>
 
-    <!-- 完成工单弹窗 -->
-    <uni-popup ref="completePopup" type="bottom" :safe-area="false">
-      <view class="complete-modal">
-        <view class="modal-header">
-          <text class="modal-title">完成工单</text>
-          <view class="close-btn" @tap="closeCompleteModal">
-            <u-icon name="close" size="20" color="#8E8E93"></u-icon>
-          </view>
+  <!-- 完成工单弹窗 -->
+  <u-popup :show="showCompletePopup" mode="bottom" :safe-area-inset-bottom="true" @close="closeCompleteModal">
+    <view class="complete-modal">
+      <view class="modal-header">
+        <text class="modal-title">完成工单</text>
+        <view class="close-btn" @tap="closeCompleteModal">
+          <u-icon name="close" size="20" color="#8E8E93"></u-icon>
+        </view>
+      </view>
+
+      <view class="modal-content">
+        <!-- 处理说明 -->
+        <view class="form-section">
+          <text class="form-label">处理说明</text>
+          <textarea v-model="completeForm.remark" class="form-textarea" placeholder="请描述处理结果..." :maxlength="500"
+            :auto-height="true" />
         </view>
 
-        <view class="modal-content">
-          <!-- 处理说明 -->
-          <view class="form-section">
-            <text class="form-label">处理说明</text>
-            <textarea
-              v-model="completeForm.remark"
-              class="form-textarea"
-              placeholder="请描述处理结果..."
-              :maxlength="500"
-              :auto-height="true"
-            />
-          </view>
-
-          <!-- 上传图片 -->
-          <view class="form-section">
-            <text class="form-label">现场图片</text>
-            <scroll-view v-if="completeForm.images.length > 0" class="image-preview-scroll" scroll-x>
-              <view
-                v-for="(img, index) in completeForm.images"
-                :key="index"
-                class="preview-image-item"
-              >
-                <image :src="img.url" mode="aspectFill" />
-                <view class="remove-image-btn" @tap="removeCompleteImage(index)">
-                  <u-icon name="close" size="14" color="#FFFFFF"></u-icon>
-                </view>
+        <!-- 上传图片 -->
+        <view class="form-section">
+          <text class="form-label">现场图片</text>
+          <scroll-view v-if="completeForm.images.length > 0" class="image-preview-scroll" scroll-x>
+            <view v-for="(img, index) in completeForm.images" :key="index" class="preview-image-item">
+              <image :src="img.url" mode="aspectFill" />
+              <view class="remove-image-btn" @tap="removeCompleteImage(index)">
+                <u-icon name="close" size="14" color="#FFFFFF"></u-icon>
               </view>
-            </scroll-view>
-            <view class="upload-btn-group">
-              <view class="upload-action-btn" @tap="chooseCompleteImage">
-                <u-icon name="camera" size="20" color="#007AFF"></u-icon>
-                <text>添加图片</text>
-              </view>
+            </view>
+          </scroll-view>
+          <view class="upload-btn-group">
+            <view class="upload-action-btn" @tap="chooseCompleteImage">
+              <u-icon name="camera" size="20" color="#007AFF"></u-icon>
+              <text>添加图片</text>
             </view>
           </view>
         </view>
+      </view>
 
-        <view class="modal-footer">
-          <view class="modal-btn cancel" @tap="closeCompleteModal">
-            <text>取消</text>
-          </view>
-          <view class="modal-btn confirm" @tap="confirmComplete">
-            <text>完成工单</text>
-          </view>
+      <view class="modal-footer">
+        <view class="modal-btn cancel" @tap="closeCompleteModal">
+          <text>取消</text>
+        </view>
+        <view class="modal-btn confirm" @tap="confirmComplete">
+          <text>确认</text>
         </view>
       </view>
-    </uni-popup>
-  </view>
+    </view>
+  </u-popup>
+
 </template>
 
 <script setup lang="ts">
@@ -199,7 +178,7 @@ const ticket = ref<Ticket | null>(null);
 const ticketId = ref('');
 
 // 完成工单弹窗相关
-const completePopup = ref();
+const showCompletePopup = ref(false);
 const completeForm = ref({
   remark: '',
   images: Array<{ url: string; attachmentId?: string }>(),
@@ -218,7 +197,7 @@ const uploadedEvidence = ref<Array<{
 const statusClass = computed(() => {
   if (!ticket.value) return '';
   const status = ticket.value.status;
-  if (status === 'WAIT_ACCEPT') return 'pending';
+  if (status === 'WAIT_ASSIGN') return 'pending';
   if (status === 'PROCESSING') return 'processing';
   if (status === 'COMPLETED') return 'completed';
   if (status === 'CLOSED') return 'closed';
@@ -433,14 +412,14 @@ function submitRecord() {
  * 完成工单 - 打开弹窗
  */
 function handleComplete() {
-  completePopup.value?.open();
+  showCompletePopup.value = true;
 }
 
 /**
  * 关闭完成弹窗
  */
 function closeCompleteModal() {
-  completePopup.value?.close();
+  showCompletePopup.value = false;
 }
 
 /**
@@ -655,7 +634,7 @@ function formatDateTime(dateStr: string) {
 
 .user-info-inline {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16rpx;
 }
 
@@ -681,6 +660,25 @@ function formatDateTime(dateStr: string) {
 .user-phone-inline {
   font-size: 24rpx;
   color: #8E8E93;
+}
+
+.call-btn-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  background: #34C759;
+  color: #FFFFFF;
+  padding: 8rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+
+.call-btn-mini text {
+  font-size: 22rpx;
 }
 
 .call-btn-inline {
@@ -816,6 +814,8 @@ function formatDateTime(dateStr: string) {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -931,9 +931,9 @@ function formatDateTime(dateStr: string) {
 .modal-footer {
   display: flex;
   gap: 16rpx;
-  padding: 24rpx 32rpx;
+  padding: 32rpx;
   border-top: 2rpx solid #F2F2F7;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
 }
 
 .modal-btn {

@@ -8,24 +8,21 @@ import { TicketStatus, Priority, CommentType, NotificationType } from '@/api/typ
 // ============================================
 
 export const TICKET_STATUS_OPTIONS = [
-  { value: TicketStatus.WAIT_ASSIGN, label: '待指派', color: '#fa8c16' },
-  { value: TicketStatus.WAIT_ACCEPT, label: '待接单', color: '#1890ff' },
+  { value: TicketStatus.WAIT_ASSIGN, label: '等待处理', color: '#1890ff' },
   { value: TicketStatus.PROCESSING, label: '处理中', color: '#597ef7' },
   { value: TicketStatus.COMPLETED, label: '待评价', color: '#52c41a' },
   { value: TicketStatus.CLOSED, label: '已关闭', color: '#999' },
 ];
 
 export const TICKET_STATUS_TEXT: Record<TicketStatus, string> = {
-  [TicketStatus.WAIT_ASSIGN]: '待指派',
-  [TicketStatus.WAIT_ACCEPT]: '待接单',
+  [TicketStatus.WAIT_ASSIGN]: '等待处理',
   [TicketStatus.PROCESSING]: '处理中',
   [TicketStatus.COMPLETED]: '待评价',
   [TicketStatus.CLOSED]: '已关闭',
 };
 
 export const TICKET_STATUS_COLOR: Record<TicketStatus, string> = {
-  [TicketStatus.WAIT_ASSIGN]: '#fa8c16',
-  [TicketStatus.WAIT_ACCEPT]: '#1890ff',
+  [TicketStatus.WAIT_ASSIGN]: '#1890ff',
   [TicketStatus.PROCESSING]: '#597ef7',
   [TicketStatus.COMPLETED]: '#52c41a',
   [TicketStatus.CLOSED]: '#999',

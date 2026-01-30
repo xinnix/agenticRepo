@@ -677,7 +677,6 @@ export const userRouter = createCrudRouterWithCustom(
           completed,
           processing,
           waitAssign,
-          waitAccept,
           overdue,
           avgRating,
           recentTickets,
@@ -709,13 +708,6 @@ export const userRouter = createCrudRouterWithCustom(
             where: {
               assignedId: userId,
               status: "WAIT_ASSIGN",
-            },
-          }),
-          // Wait accept tickets
-          ctx.prisma.ticket.count({
-            where: {
-              assignedId: userId,
-              status: "WAIT_ACCEPT",
             },
           }),
           // Overdue tickets
@@ -760,7 +752,6 @@ export const userRouter = createCrudRouterWithCustom(
           completed,
           processing,
           waitAssign,
-          waitAccept,
           overdue,
           avgRating: avgRating._avg.rating || 0,
           recentTickets,
@@ -838,7 +829,7 @@ export const userRouter = createCrudRouterWithCustom(
                 select: {
                   assignedTickets: {
                     where: {
-                      status: { in: ["PROCESSING", "WAIT_ACCEPT"] },
+                      status: "PROCESSING",
                     },
                   },
                 },
@@ -1178,7 +1169,6 @@ export const userRouter = createCrudRouterWithCustom(
 
         const stats = {
           WAIT_ASSIGN: 0,
-          WAIT_ACCEPT: 0,
           PROCESSING: 0,
           COMPLETED: 0,
           CLOSED: 0,
@@ -1209,7 +1199,7 @@ export const userRouter = createCrudRouterWithCustom(
         const activeTickets = await ctx.prisma.ticket.findMany({
           where: {
             assignedId: input.id,
-            status: { in: ["WAIT_ACCEPT", "PROCESSING"] },
+            status: "PROCESSING",
           },
           take: 10,
           orderBy: { createdAt: "desc" },

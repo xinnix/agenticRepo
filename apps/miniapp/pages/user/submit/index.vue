@@ -1,107 +1,84 @@
 <template>
-  <PageLayout>
-    <view class="min-h-screen bg-page">
-      <!-- 极简表单区域 -->
-      <view class="form-container">
-        <u-form labelPosition="top" :model="formData" :rules="rules" ref="uFormRef" label-width="200rpx">
-          <!-- 位置信息 -->
-          <u-form-item label="位置信息" prop="presetAreaId" borderBottom @click="showAreaActionSheet = true">
-            <u-input
-              v-model="selectedAreaName"
-              placeholder="请选择位置信息（可选）"
-              disabled
-              disabledColor="#ffffff"
-              border="none"
-              :custom-style="inputStyle"
-            />
-            <u-icon slot="right" name="arrow-right"></u-icon>
-          </u-form-item>
 
-          <!-- 问题分类 -->
-          <u-form-item label="问题分类" prop="categoryId" required borderBottom @click="showCategoryActionSheet = true">
-            <u-input
-              v-model="selectedCategoryName"
-              placeholder="请选择问题分类"
-              disabled
-              disabledColor="#ffffff"
-              border="none"
-              :custom-style="inputStyle"
-            />
-            <u-icon slot="right" name="arrow-right"></u-icon>
-          </u-form-item>
+  <view class="min-h-screen bg-page">
+    <!-- 极简表单区域 -->
+    <view class="form-container">
+      <u-form labelPosition="top" :model="formData" :rules="rules" ref="uFormRef" label-width="200rpx">
+        <!-- 位置信息 -->
+        <u-form-item label="位置信息" prop="presetAreaId" borderBottom @click="showAreaActionSheet = true">
+          <u-input v-model="selectedAreaName" placeholder="请选择位置信息（可选）" disabled disabledColor="#ffffff" border="none"
+            :custom-style="inputStyle" />
+          <u-icon slot="right" name="arrow-right"></u-icon>
+        </u-form-item>
 
-          <!-- 详细描述 -->
-          <u-form-item label="详细描述" prop="description" required borderBottom>
-            <u-textarea v-model="formData.description" placeholder="请详细描述问题情况，以便更好地处理" border="none"
-              :custom-style="textareaStyle" :maxlength="500" count />
-          </u-form-item>
+        <!-- 问题分类 -->
+        <u-form-item label="问题分类" prop="categoryId" required borderBottom @click="showCategoryActionSheet = true">
+          <u-input v-model="selectedCategoryName" placeholder="请选择问题分类" disabled disabledColor="#ffffff" border="none"
+            :custom-style="inputStyle" />
+          <u-icon slot="right" name="arrow-right"></u-icon>
+        </u-form-item>
 
-          <!-- 图片上传 -->
-          <u-form-item label="图片上传" prop="attachments" borderBottom>
-            <u-upload :fileList="fileList" @afterRead="onAfterRead"
-              @delete="onDelete" :maxCount="9" :maxSize="5 * 1024 * 1024" :previewFullImage="true" :deletable="true"
-              multiple />
-          </u-form-item>
+        <!-- 详细描述 -->
+        <u-form-item label="详细描述" prop="description" required borderBottom>
+          <u-textarea v-model="formData.description" placeholder="请详细描述问题情况，以便更好地处理" border="none"
+            :custom-style="textareaStyle" :maxlength="500" count />
+        </u-form-item>
 
-          <!-- 提交者信息 -->
+        <!-- 图片上传 -->
+        <u-form-item label="图片上传" prop="attachments" borderBottom>
+          <u-upload :fileList="fileList" @afterRead="onAfterRead" @delete="onDelete" :maxCount="9"
+            :maxSize="5 * 1024 * 1024" :previewFullImage="true" :deletable="true" multiple />
+        </u-form-item>
+
+        <!-- 提交者信息 -->
 
 
 
 
-          <u-form-item v-if="!formData.isAnonymous" label="姓名" prop="submitterName" borderBottom>
-            <u-input v-model="formData.submitterName" placeholder="请输入您的姓名" border="none" :custom-style="inputStyle" />
-          </u-form-item>
+        <u-form-item v-if="!formData.isAnonymous" label="姓名" prop="submitterName" borderBottom>
+          <u-input v-model="formData.submitterName" placeholder="请输入您的姓名" border="none" :custom-style="inputStyle" />
+        </u-form-item>
 
-          <u-form-item v-if="!formData.isAnonymous" label="手机号" prop="submitterPhone" borderBottom>
-            <u-input v-model="formData.submitterPhone" placeholder="请输入您的手机号" border="none" :custom-style="inputStyle"
-              type="number" :maxlength="11" />
-          </u-form-item>
-          <u-form-item label="匿名提交" prop="isAnonymous" borderBottom>
-            <u-switch v-model="formData.isAnonymous" :active-value="true" :inactive-value="false" />
-          </u-form-item>
+        <u-form-item v-if="!formData.isAnonymous" label="手机号" prop="submitterPhone" borderBottom>
+          <u-input v-model="formData.submitterPhone" placeholder="请输入您的手机号" border="none" :custom-style="inputStyle"
+            type="number" :maxlength="11" />
+        </u-form-item>
+        <u-form-item label="匿名提交" prop="isAnonymous" borderBottom>
+          <u-switch v-model="formData.isAnonymous" :active-value="true" :inactive-value="false" />
+        </u-form-item>
 
 
-          <!-- 提交按钮 -->
-          <view class="submit-section">
-            <u-button type="primary" :loading="submitting" @click="handleSubmit" :custom-style="{ width: '100%' }">
-              提交反馈
-            </u-button>
-          </view>
-        </u-form>
-      </view>
-
-      <!-- 分类选择 ActionSheet -->
-      <u-action-sheet
-        :show="showCategoryActionSheet"
-        :actions="categoryActions"
-        title="请选择问题分类"
-        @close="showCategoryActionSheet = false"
-        @select="onCategorySelect"
-      />
-
-      <!-- 位置选择 ActionSheet -->
-      <u-action-sheet
-        :show="showAreaActionSheet"
-        :actions="areaActions"
-        title="请选择位置信息"
-        @close="showAreaActionSheet = false"
-        @select="onAreaSelect"
-      />
+        <!-- 提交按钮 -->
+        <view class="submit-section">
+          <u-button type="primary" :loading="submitting" @click="handleSubmit" :custom-style="{ width: '100%' }">
+            提交反馈
+          </u-button>
+        </view>
+      </u-form>
     </view>
-  </PageLayout>
+
+    <!-- 分类选择 ActionSheet -->
+    <u-action-sheet :show="showCategoryActionSheet" :actions="categoryActions" title="请选择问题分类"
+      @close="showCategoryActionSheet = false" @select="onCategorySelect" />
+
+    <!-- 位置选择 ActionSheet -->
+    <u-action-sheet :show="showAreaActionSheet" :actions="areaActions" title="请选择位置信息"
+      @close="showAreaActionSheet = false" @select="onAreaSelect" />
+  </view>
+
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useTicketStore } from '@/store';
-import PageLayout from '@/components/PageLayout.vue';
 import { useUpload } from '@/composables/useUpload';
 import * as categoryApi from '@/api/category';
 import * as areaApi from '@/api/area';
+import * as attachmentApi from '@/api/attachment';
 import type { Category, Attachment, PresetArea } from '@/api/types';
 
 const ticketStore = useTicketStore();
-const { uploadFile } = useUpload();
+const { chooseAndUploadImage } = useUpload();
 
 // 表单数据
 const formData = ref({
@@ -302,19 +279,54 @@ async function onAfterRead(event: any) {
 
     uni.showLoading({ title: '上传中...' });
 
-    // 批量上传已选择的文件
-    const uploadPromises = files.map((f: any, index: number) => {
+    // 批量上传已选择的文件（使用 OSS 直传）
+    const uploadPromises = files.map(async (f: any, index: number) => {
       const currentIndex = startIndex + index; // 正确的索引计算
-      return uploadFile(f.url || f.path, 'IMAGE').then(attachment => {
-        console.log(`上传成功，索引 ${currentIndex}，URL:`, attachment.url);
+      const filePath = f.url || f.path;
+
+      try {
+        // 1. 获取OSS上传凭证
+        console.log(`[OSS] 开始获取上传凭证，文件: ${filePath}`);
+        const credentials = await attachmentApi.getUploadCredentials('attachments');
+
+        // 2. 生成唯一文件名
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(2, 15);
+        const ext = filePath.substring(filePath.lastIndexOf('.'));
+        const objectName = `attachments/image/${timestamp}-${randomStr}${ext}`;
+
+        // 3. 使用凭证直传OSS
+        const ossUrl = await attachmentApi.uploadToOss(credentials, filePath, objectName);
+        console.log(`[OSS] 上传成功，索引 ${currentIndex}，URL:`, ossUrl);
+
+        // 4. 创建附件记录（调用后端 API）
+        const attachment = await attachmentApi.createAttachment({
+          url: ossUrl,
+          fileName: `uploaded_file${ext}`,
+          fileSize: 0, // OSS 直传方式无法获取文件大小
+          mimeType: 'image/jpeg',
+          type: 'IMAGE',
+        });
+
+        console.log(`[OSS] 后端附件记录创建成功，索引 ${currentIndex}，ID:`, attachment.id);
+
         // 更新 fileList 中对应项的状态和 URL
         fileList.value[currentIndex] = {
           url: attachment.url, // 服务器返回的 URL
           status: 'success',
           message: '上传成功',
         };
+
         return attachment;
-      });
+      } catch (error) {
+        console.error(`文件上传失败，索引 ${currentIndex}:`, error);
+        fileList.value[currentIndex] = {
+          url: filePath,
+          status: 'failed',
+          message: '上传失败',
+        };
+        throw error;
+      }
     });
 
     const attachments = await Promise.all(uploadPromises);
@@ -322,21 +334,14 @@ async function onAfterRead(event: any) {
 
     console.log('fileList:', fileList.value);
     console.log('uploadedAttachments:', uploadedAttachments.value);
-
-    uni.hideLoading();
-    uni.showToast({
-      title: '上传成功',
-      icon: 'success',
-    });
   } catch (error) {
-    console.error('上传图片失败', error);
-    uni.hideLoading();
+    console.error('批量上传失败', error);
     uni.showToast({
       title: '上传失败',
       icon: 'error',
     });
-    // 上传失败时，移除对应的 fileList 项
-    fileList.value = fileList.value.filter(item => item.status !== 'uploading');
+  } finally {
+    uni.hideLoading();
   }
 }
 

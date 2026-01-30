@@ -77,20 +77,11 @@ export function useSmartNavigation() {
 
   /**
    * 根据角色获取基础路径
-   * 小程序只支持两种角色：user 和 handler
+   * 所有用户统一跳转到普通用户Dashboard
+   * 用户可以通过页面上的按钮进入办事员面板
    */
   function getRoleBasedPath(): string {
-    const role = tabBarStore.role;
-
-    if (!role) {
-      return "/pages/user/dashboard/index";
-    }
-
-    if (role === "handler") {
-      return "/pages/handler/dashboard/index";
-    }
-
-    // user 或其他角色 - 跳转到用户仪表盘
+    // 始终跳转到普通用户Dashboard，不再根据角色跳转
     return "/pages/user/dashboard/index";
   }
 

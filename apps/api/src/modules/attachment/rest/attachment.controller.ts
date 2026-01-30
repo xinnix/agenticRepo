@@ -130,6 +130,28 @@ export class AttachmentController {
     }
   }
 
+  @Post('create-from-url')
+  @ApiOperation({ summary: '从URL创建附件记录（用于OSS直传后）' })
+  async createFromUrl(
+    @Body() data: {
+      url: string;
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      type: 'IMAGE' | 'VIDEO';
+    },
+    @CurrentUser() user: any,
+  ) {
+    return this.attachmentService.create({
+      type: data.type,
+      url: data.url,
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      mimeType: data.mimeType,
+      uploadedById: user.id,
+    });
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '获取附件详情' })
   async findOne(@Param('id') id: string) {

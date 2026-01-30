@@ -5,8 +5,7 @@ import { Injectable } from '@nestjs/common';
 // ============================================
 
 export const TICKET_STATE_TRANSITIONS: Record<string, string[]> = {
-  WAIT_ASSIGN: ['WAIT_ACCEPT', 'CLOSED'],
-  WAIT_ACCEPT: ['PROCESSING', 'WAIT_ASSIGN', 'CLOSED'],
+  WAIT_ASSIGN: ['PROCESSING', 'CLOSED'],
   PROCESSING: ['COMPLETED', 'WAIT_ASSIGN', 'CLOSED'],
   COMPLETED: ['CLOSED'],
   CLOSED: [],
@@ -14,14 +13,9 @@ export const TICKET_STATE_TRANSITIONS: Record<string, string[]> = {
 
 export const STATE_ACTIONS: Record<string, { label: string; color: string; nextActions: string[] }> = {
   WAIT_ASSIGN: {
-    label: '待指派',
-    color: 'orange',
-    nextActions: ['assign', 'close'],
-  },
-  WAIT_ACCEPT: {
-    label: '待接单',
+    label: '等待处理',
     color: 'blue',
-    nextActions: ['accept', 'reassign', 'close'],
+    nextActions: ['assign', 'accept', 'close'],
   },
   PROCESSING: {
     label: '处理中',

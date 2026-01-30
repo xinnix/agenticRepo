@@ -8,8 +8,7 @@
 // ============================================
 
 export enum TicketStatus {
-  WAIT_ASSIGN = 'WAIT_ASSIGN',   // 待指派
-  WAIT_ACCEPT = 'WAIT_ACCEPT',   // 待接单
+  WAIT_ASSIGN = 'WAIT_ASSIGN',   // 等待处理（可接单或派单）
   PROCESSING = 'PROCESSING',     // 处理中
   COMPLETED = 'COMPLETED',       // 待评价
   CLOSED = 'CLOSED',            // 已关闭
@@ -76,6 +75,11 @@ export interface User {
   // 角色权限
   roles?: UserRole[];
   permissions?: string[];
+
+  // 办事员申请信息
+  realName?: string;           // 真实姓名
+  handlerStatus?: 'pending' | 'approved' | 'rejected' | null;  // 申请状态
+  handlerAppliedAt?: string;   // 申请时间
 }
 
 export interface Role {
@@ -138,6 +142,7 @@ export interface Ticket {
   locationType: LocationType;
   location?: string;
   presetAreaId?: string;
+  presetArea?: PresetArea;
   createdById: string;
   createdBy: User;
   assignedId?: string;
@@ -177,6 +182,7 @@ export interface Comment {
   userId: string;
   user: User;
   commentType: CommentType;
+  attachments?: Attachment[];  // 关联的附件（处理记录的图片/视频）
   createdAt: string;
 }
 
@@ -269,6 +275,7 @@ export interface CreateTicketDto {
   categoryId: string;
   priority: Priority;
   location?: string;
+  presetAreaId?: string; // 预设区域ID
   attachmentIds?: string[]; // 通过后端上传的附件ID
   attachmentUrls?: string[]; // 直接上传到OSS的URLs
 }
@@ -290,8 +297,7 @@ export interface TicketActionDto {
 // ============================================
 
 export const TICKET_STATUS_TEXT: Record<TicketStatus, string> = {
-  [TicketStatus.WAIT_ASSIGN]: '待指派',
-  [TicketStatus.WAIT_ACCEPT]: '待接单',
+  [TicketStatus.WAIT_ASSIGN]: '等待处理',
   [TicketStatus.PROCESSING]: '处理中',
   [TicketStatus.COMPLETED]: '待评价',
   [TicketStatus.CLOSED]: '已关闭',

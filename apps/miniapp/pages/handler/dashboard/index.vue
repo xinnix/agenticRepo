@@ -59,7 +59,7 @@
           </view>
           <text class="time-text">刚刚发布</text>
         </view>
-        <view class="urgent-card" @tap="goToDetail(urgentTicket.id)">
+        <view class="urgent-card">
           <view class="ticket-tag urgent-tag">
             <text class="tag-text">#{{ urgentTicket.ticketNumber }}</text>
           </view>
@@ -68,15 +68,14 @@
             <u-icon name="map" size="16" color="#8E8E93"></u-icon>
             <text>{{ urgentTicket.location || '未指定位置' }}</text>
           </view>
-          <view class="grab-btn">
-            <text>立即抢单</text>
+          <view class="grab-btn" @tap.stop="handleAccept(urgentTicket.id)">
+            <text>立即接单</text>
           </view>
         </view>
       </view>
 
       <!-- 常规任务列表 -->
       <view class="normal-tasks">
-        <!-- <text class="list-title">常规任务 ({{ normalTickets.length }})</text> -->
         <view v-if="normalTickets.length > 0" class="task-list">
           <view v-for="ticket in normalTickets" :key="ticket.id" class="task-card" @tap="goToDetail(ticket.id)">
             <view class="task-header">
@@ -87,10 +86,10 @@
             <view class="task-footer">
               <view class="task-distance">
                 <u-icon name="map" size="12" color="#8E8E93"></u-icon>
-                <text>距离 {{ getRandomDistance() }}</text>
+                <text>{{ getAreaName(ticket) }}</text>
               </view>
-              <view class="detail-btn">
-                <text>查看详情</text>
+              <view class="action-btn" @tap.stop="handleAccept(ticket.id)">
+                <text>去处理</text>
               </view>
             </view>
           </view>
@@ -131,11 +130,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store';
+import { useTicketStore } from '@/store';
 import * as statisticsApi from '@/api/statistics';
 import * as authApi from '@/api/auth';
 import type { Ticket } from '@/api/types';
 
 const userStore = useUserStore();
+const ticketStore = useTicketStore();
 
 // 统计数据
 const stats = ref({
@@ -209,11 +210,19 @@ function formatTime(dateStr: string): string {
 }
 
 /**
- * 获取随机距离（演示用）
+ * 获取区域名称
  */
-function getRandomDistance(): string {
-  const distances = ['150m', '400m', '800m', '1.2km', '2km'];
-  return distances[Math.floor(Math.random() * distances.length)];
+function getAreaName(ticket: Ticket): string {
+  // 如果有预设区域，显示区域名称
+  if (ticket.presetArea) {
+    return ticket.presetArea.name;
+  }
+  // 如果有手动输入的位置，显示位置信息
+  if (ticket.location) {
+    return ticket.location;
+  }
+  // 都没有则返回默认文本
+  return '未指定区域';
 }
 
 /**
@@ -234,9 +243,26 @@ async function loadStats() {
  */
 async function loadPoolTickets() {
   try {
-    // 这里需要调用获取待接单池工单的 API
-    // 暂时使用空数组，后续需要实现
-    poolTickets.value = [];
+    // 加载状态为 WAIT_ASSIGN（等待处理）的工单
+    await ticketStore.loadTickets({
+      status: 'WAIT_ASSIGN',
+      limit: 50, // 加载更多工单
+    }, true);
+
+    poolTickets.value = ticketStore.ticketList;
+
+    // 调试：检查presetArea数据
+    console.log('[Dashboard] 待接单池工单:', poolTickets.value);
+    console.log('[Dashboard] 第一条工单完整数据:', JSON.stringify(poolTickets.value[0], null, 2));
+    console.log('[Dashboard] 第一条工单的区域信息:', poolTickets.value[0]?.presetArea);
+
+    // 检查工单的 presetAreaId
+    console.log('[Dashboard] 第一条工单的presetAreaId:', poolTickets.value[0]?.presetAreaId);
+
+    // 统计有预设区域的工单数量
+    const withArea = poolTickets.value.filter(t => t.presetArea).length;
+    const withoutArea = poolTickets.value.filter(t => !t.presetArea).length;
+    console.log(`[Dashboard] 有预设区域: ${withArea}, 无预设区域: ${withoutArea}`);
   } catch (error) {
     console.error('加载待接单池失败', error);
   }
@@ -261,6 +287,8 @@ function switchTab(tab: 'pool' | 'my') {
   activeTab.value = tab;
   if (tab === 'pool') {
     loadPoolTickets();
+  } else if (tab === 'my') {
+    loadStats();
   }
 }
 
@@ -302,6 +330,37 @@ function goToTasks(status: string) {
 function goToDetail(id: string) {
   uni.navigateTo({
     url: `/pages/handler/task-detail/index?id=${id}`,
+  });
+}
+
+/**
+ * 接单
+ */
+async function handleAccept(id: string) {
+  uni.showModal({
+    title: '确认接单',
+    content: '确定要接单吗？接单后需要及时处理。',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await ticketStore.acceptTicket(id);
+          uni.showToast({
+            title: '接单成功',
+            icon: 'success',
+          });
+          // 刷新待接单池和统计数据
+          await Promise.all([
+            loadPoolTickets(),
+            loadStats(),
+          ]);
+        } catch (error: any) {
+          uni.showToast({
+            title: error.message || '接单失败',
+            icon: 'error',
+          });
+        }
+      }
+    },
   });
 }
 
@@ -547,7 +606,15 @@ onShow(() => {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  font-size: 28rpx;
+  font-size: 24rpx;
+  color: #8E8E93;
+}
+
+.task-distance {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 22rpx;
   color: #8E8E93;
 }
 
@@ -624,7 +691,6 @@ onShow(() => {
   padding-top: 24rpx;
 }
 
-.task-distance,
 .task-meta {
   display: flex;
   align-items: center;
@@ -633,6 +699,15 @@ onShow(() => {
   color: #8E8E93;
 }
 
+.action-btn {
+  padding: 12rpx 40rpx;
+  background: #007AFF;
+  border-radius: 40rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+}
 
 .detail-btn {
   padding: 12rpx 40rpx;

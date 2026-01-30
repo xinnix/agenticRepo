@@ -35,8 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const steps: Step[] = [
-  { key: TicketStatus.WAIT_ASSIGN, label: '已提交' },
-  { key: TicketStatus.WAIT_ACCEPT, label: '已指派' },
+  { key: TicketStatus.WAIT_ASSIGN, label: '等待处理' },
   { key: TicketStatus.PROCESSING, label: '处理中' },
   { key: TicketStatus.COMPLETED, label: '已完成' },
   { key: TicketStatus.CLOSED, label: '已关闭' },

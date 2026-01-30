@@ -20,12 +20,8 @@
           <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
         </view>
         <view class="progress-steps">
-          <view
-            v-for="(step, index) in steps"
-            :key="index"
-            class="step-item"
-            :class="{ active: index <= currentIndex }"
-          >
+          <view v-for="(step, index) in steps" :key="index" class="step-item"
+            :class="{ active: index <= currentIndex }">
             <view class="step-dot"></view>
             <text class="step-label">{{ step.label }}</text>
           </view>
@@ -37,8 +33,8 @@
         <view class="card-title">工单信息</view>
 
         <view class="info-row">
-          <text class="info-label">问题标题</text>
-          <text class="info-value">{{ ticket.title }}</text>
+          <text class="info-label">问题分类</text>
+          <text class="info-value">{{ ticket.category?.name || '未分类' }}</text>
         </view>
 
         <view class="info-row">
@@ -46,20 +42,19 @@
           <text class="info-value description">{{ ticket.description }}</text>
         </view>
 
-        <view class="info-row">
-          <text class="info-label">问题分类</text>
-          <text class="info-value">{{ ticket.category?.name || '未分类' }}</text>
-        </view>
-
         <view v-if="ticket.location" class="info-row">
           <text class="info-label">位置信息</text>
           <text class="info-value">{{ ticket.location }}</text>
         </view>
 
-        <view class="info-row">
-          <text class="info-label">优先级</text>
-          <view class="priority-tag" :class="getPriorityClass(ticket.priority)">
-            <text>{{ getPriorityText(ticket.priority) }}</text>
+        <!-- 相关图片 (移至工单信息卡片内) -->
+        <view v-if="ticket.attachments && ticket.attachments.length > 0" class="info-section">
+          <text class="info-label">相关图片</text>
+          <view class="image-grid">
+            <view v-for="(img, index) in ticket.attachments" :key="index" class="image-item"
+              @tap="previewImage(ticket.attachments!, index)">
+              <image class="image-thumb" :src="img.url" mode="aspectFill" />
+            </view>
           </view>
         </view>
 
@@ -69,40 +64,62 @@
         </view>
       </view>
 
-      <!-- 图片附件卡片 -->
-      <view v-if="ticket.attachments && ticket.attachments.length > 0" class="card">
-        <view class="card-title">相关图片</view>
-        <view class="image-grid">
-          <view
-            v-for="(img, index) in ticket.attachments"
-            :key="index"
-            class="image-item"
-            @tap="previewImage(ticket.attachments!, index)"
-          >
-            <image class="image-thumb" :src="img.url" mode="aspectFill" />
-          </view>
-        </view>
-      </view>
+      <!-- 处理反馈卡片 -->
+      <view v-if="ticket.assignedTo || handlerComments.length > 0" class="card feedback-card">
+        <view class="card-title">处理反馈</view>
 
-      <!-- 处理人信息卡片 -->
-      <view v-if="ticket.assignedTo" class="card">
-        <view class="card-title">处理人信息</view>
-        <view class="handler-info">
-          <image
-            class="handler-avatar"
-            :src="ticket.assignedTo.wxAvatarUrl || ticket.assignedTo.avatar || '/static/logo.png'"
-            mode="aspectFill"
-          />
-          <view class="handler-details">
-            <text class="handler-name">{{ ticket.assignedTo.wxNickname || ticket.assignedTo.username }}</text>
-            <text v-if="ticket.assignedTo.position" class="handler-position">{{ ticket.assignedTo.position }}</text>
+        <!-- 处理人信息 -->
+        <view v-if="ticket.assignedTo" class="info-row handler-row">
+          <text class="info-label">处理人</text>
+          <view class="handler-info">
+            <image class="handler-avatar-small"
+              :src="ticket.assignedTo.wxAvatarUrl || ticket.assignedTo.avatar || '/static/default-avatar.png'"
+              mode="aspectFill" />
+            <view class="handler-details">
+              <text class="handler-name">{{ ticket.assignedTo.realName || ticket.assignedTo.realName ||
+                ticket.assignedTo.username || '工作人员' }}</text>
+              <text v-if="ticket.assignedTo.department?.name || ticket.assignedTo.position" class="handler-position">
+                {{ ticket.assignedTo.department?.name }}{{ ticket.assignedTo.position ? ` ·
+                ${ticket.assignedTo.position}` : '' }}
+              </text>
+            </view>
+            <view v-if="ticket.assignedTo.phone" class="action-btn primary" @tap="makeCall">
+              <text>联系</text>
+            </view>
           </view>
         </view>
-        <view class="action-btns">
-          <view class="action-btn primary" @tap="makeCall">
-            <u-icon name="phone" size="20" color="#FFFFFF"></u-icon>
-            <text>联系处理人</text>
+
+        <!-- 处理反馈列表 -->
+        <view v-if="handlerComments.length > 0" class="feedback-list">
+          <view v-for="(comment, index) in handlerComments" :key="comment.id" class="feedback-section">
+            <!-- 完成时间 -->
+            <view class="info-row">
+              <text class="info-label">完成时间</text>
+              <text class="info-value">{{ formatDateTime(comment.createdAt) }}</text>
+            </view>
+
+            <!-- 反馈内容 -->
+            <view v-if="comment.content" class="info-row">
+              <text class="info-label">反馈内容</text>
+              <text class="info-value description">{{ comment.content }}</text>
+            </view>
+
+            <!-- 反馈图片 -->
+            <view v-if="comment.attachments && comment.attachments.length > 0" class="info-section">
+              <text class="info-label">反馈图片</text>
+              <view class="feedback-images">
+                <view v-for="(img, imgIndex) in comment.attachments" :key="img.id" class="feedback-image-item"
+                  @tap="previewImage(comment.attachments!, imgIndex)">
+                  <image class="feedback-image" :src="img.url" mode="aspectFill" />
+                </view>
+              </view>
+            </view>
           </view>
+        </view>
+
+        <!-- 暂无反馈 -->
+        <view v-else-if="ticket.assignedTo" class="no-feedback">
+          <text class="no-feedback-text">暂无处理反馈</text>
         </view>
       </view>
 
@@ -111,13 +128,8 @@
         <view class="card-title">我的评价</view>
         <view class="rating-section">
           <view class="rating-stars">
-            <u-icon
-              v-for="i in 5"
-              :key="i"
-              name="star-fill"
-              size="24"
-              :color="i <= ticket.rating ? '#FF9500' : '#E5E5E5'"
-            />
+            <u-icon v-for="i in 5" :key="i" name="star-fill" size="24"
+              :color="i <= ticket.rating ? '#FF9500' : '#E5E5E5'" />
           </view>
           <text v-if="ticket.feedback" class="feedback-text">{{ ticket.feedback }}</text>
         </view>
@@ -125,19 +137,12 @@
 
       <!-- 底部操作按钮 -->
       <view class="bottom-actions">
-        <view
-          v-if="ticket.status === 'COMPLETED'"
-          class="action-btn-large primary"
-          @tap="goToRate"
-        >
+        <view v-if="ticket.status === 'COMPLETED'" class="action-btn-large primary" @tap="goToRate">
           <text>立即评价</text>
         </view>
 
-        <view
-          v-if="ticket.status === 'COMPLETED' && !ticket.rating"
-          class="action-btn-large outline"
-          @tap="closeTicket"
-        >
+        <view v-if="ticket.status === 'COMPLETED' && !ticket.rating" class="action-btn-large outline"
+          @tap="closeTicket">
           <text>关闭工单</text>
         </view>
       </view>
@@ -152,17 +157,24 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useTicketStore } from '@/store';
-import { TicketStatus, type Ticket } from '@/api/types';
+import { TicketStatus, CommentType, type Ticket } from '@/api/types';
 
 const ticketStore = useTicketStore();
 
 const ticket = ref<Ticket | null>(null);
 const ticketId = ref('');
 
+// 筛选出处理人的反馈评论
+const handlerComments = computed(() => {
+  if (!ticket.value?.comments) return [];
+  return ticket.value.comments
+    .filter(c => c.commentType === CommentType.HANDLER)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+});
+
 // 进度步骤
 const steps = [
-  { key: TicketStatus.WAIT_ASSIGN, label: '已提交' },
-  { key: TicketStatus.WAIT_ACCEPT, label: '已指派' },
+  { key: TicketStatus.WAIT_ASSIGN, label: '等待处理' },
   { key: TicketStatus.PROCESSING, label: '处理中' },
   { key: TicketStatus.COMPLETED, label: '已完成' },
   { key: TicketStatus.CLOSED, label: '已关闭' },
@@ -262,8 +274,7 @@ async function closeTicket() {
  */
 function getStatusText(status: TicketStatus): string {
   const statusMap: Record<string, string> = {
-    WAIT_ASSIGN: '待指派',
-    WAIT_ACCEPT: '待接单',
+    WAIT_ASSIGN: '等待处理',
     PROCESSING: '处理中',
     COMPLETED: '已完成',
     CLOSED: '已关闭',
@@ -278,7 +289,6 @@ function getStatusText(status: TicketStatus): string {
 function getStatusClass(status: TicketStatus): string {
   const classMap: Record<string, string> = {
     WAIT_ASSIGN: 'pending',
-    WAIT_ACCEPT: 'pending',
     PROCESSING: 'processing',
     COMPLETED: 'completed',
     CLOSED: 'closed',
@@ -522,6 +532,22 @@ onLoad((options) => {
   white-space: pre-wrap;
 }
 
+/* 信息区域（用于图片等特殊内容） */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #F2F2F7;
+}
+
+.info-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 /* 优先级标签 */
 .priority-tag {
   display: inline-flex;
@@ -566,68 +592,111 @@ onLoad((options) => {
   display: block;
 }
 
-/* 处理人信息 */
-.handler-info {
+/* 处理反馈卡片 */
+.feedback-card {
+  background: #FFFFFF;
+  color: #1C1C1E;
+}
+
+/* 处理人行（作为info-row的变体） */
+.handler-row {
+  padding-bottom: 24rpx;
+}
+
+.handler-row .handler-info {
   display: flex;
   align-items: center;
-  gap: 24rpx;
-  margin-bottom: 24rpx;
+  gap: 16rpx;
   width: 100%;
 }
 
-.handler-avatar {
-  width: 96rpx;
-  height: 96rpx;
+.handler-avatar-small {
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
-  border: 3rpx solid #F2F2F7;
+  border: 2rpx solid #F2F2F7;
   flex-shrink: 0;
 }
 
 .handler-details {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 4rpx;
   flex: 1;
   min-width: 0;
 }
 
 .handler-name {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: #1C1C1E;
   word-break: break-all;
 }
 
 .handler-position {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #8E8E93;
   word-break: break-all;
 }
 
-.action-btns {
+.handler-row .action-btn {
+  padding: 12rpx 24rpx;
+  background: #007AFF;
+  color: #FFFFFF;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.25);
+}
+
+/* 反馈列表 */
+.feedback-list {
   display: flex;
-  gap: 16rpx;
+  flex-direction: column;
+  gap: 32rpx;
+  width: 100%;
+  padding-top: 8rpx;
+}
+
+.feedback-section {
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
-.action-btn {
-  flex: 1;
+/* 反馈图片 */
+.feedback-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  width: 100%;
+}
+
+.feedback-image-item {
+  aspect-ratio: 1;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #F2F2F7;
+}
+
+.feedback-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 暂无反馈 */
+.no-feedback {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  padding: 24rpx;
-  border-radius: 16rpx;
-  font-size: 28rpx;
-  font-weight: 700;
-  box-sizing: border-box;
-  min-width: 0;
+  padding: 60rpx 0;
 }
 
-.action-btn.primary {
-  background: #007AFF;
-  color: #FFFFFF;
-  box-shadow: 0 8rpx 24rpx rgba(0, 122, 255, 0.3);
+.no-feedback-text {
+  font-size: 26rpx;
+  color: #8E8E93;
 }
 
 /* 评价区域 */

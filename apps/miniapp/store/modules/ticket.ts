@@ -55,20 +55,25 @@ export const useTicketStore = defineStore('ticket', () => {
         newData = response;
         totalCount = response.length;
       }
-      // 格式2: { data: [], total } (后端返回的分页对象)
-      else if (response.data && Array.isArray(response.data)) {
+      // 格式2: { data: [], total } (后端返回的分页对象，未包装)
+      else if (response.data && Array.isArray(response.data) && !response.success) {
         newData = response.data;
         totalCount = response.total || 0;
       }
-      // 格式3: { items: [], total }
+      // 格式3: TransformInterceptor包装后的格式 { data: { data: [], total } }
+      else if (response.data?.data && Array.isArray(response.data.data)) {
+        newData = response.data.data;
+        totalCount = response.data.total || 0;
+      }
+      // 格式4: { items: [], total }
       else if (response.items && Array.isArray(response.items)) {
         newData = response.items;
         totalCount = response.total || 0;
       }
       // 兼容旧格式
       else {
-        newData = response.data || [];
-        totalCount = response.total || response.meta?.total || 0;
+        newData = response.data?.data || response.data || [];
+        totalCount = response.data?.total || response.total || response.meta?.total || 0;
       }
 
       console.log('[TicketStore] 解析后的数据:', {

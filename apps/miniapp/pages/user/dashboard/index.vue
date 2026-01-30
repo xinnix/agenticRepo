@@ -11,8 +11,8 @@
       </view>
       <view class="header-actions">
         <view class="apply-btn-small" @tap="goToApplyHandler">
-          <u-icon name="star" size="14" color="#FFFFFF"></u-icon>
-          <text>申请办事员</text>
+          <u-icon :name="handlerButtonIcon" size="14" color="#FFFFFF"></u-icon>
+          <text>{{ handlerButtonText }}</text>
         </view>
         <view class="icon-btn" @tap="goToSettings">
           <u-icon name="setting" size="22"></u-icon>
@@ -36,12 +36,7 @@
       </view>
     </view>
 
-    <!-- Tab 切换 -->
-    <view class="tab-container">
-      <view class="tab-item active">
-        <text>我的反馈</text>
-      </view>
-    </view>
+
 
     <!-- 我的反馈列表 -->
     <view class="content-container">
@@ -101,6 +96,20 @@ const userStats = ref({
   totalCount: 0,
   processingCount: 0,
   completedCount: 0,
+});
+
+// 判断是否已申请办事员
+const hasAppliedHandler = computed(() => {
+  return !!userStore.userInfo?.handlerStatus;
+});
+
+// 按钮文本和图标
+const handlerButtonText = computed(() => {
+  return hasAppliedHandler.value ? '进入办事员面板' : '申请办事员';
+});
+
+const handlerButtonIcon = computed(() => {
+  return hasAppliedHandler.value ? 'arrow-right' : 'star';
 });
 
 // 用户信息
@@ -236,9 +245,18 @@ function goToSettings() {
 }
 
 /**
- * 跳转申请办事员页面
+ * 跳转申请办事员页面或办事员面板
  */
 function goToApplyHandler() {
+  // 如果已申请办事员，跳转到办事员面板
+  if (hasAppliedHandler.value) {
+    uni.reLaunch({
+      url: '/pages/handler/dashboard/index',
+    });
+    return;
+  }
+
+  // 否则跳转申请页面
   uni.navigateTo({
     url: '/pages/user/apply-handler/index',
   });
@@ -249,8 +267,7 @@ function goToApplyHandler() {
  */
 function getStatusText(status: TicketStatus): string {
   const statusMap: Record<string, string> = {
-    WAIT_ASSIGN: '待指派',
-    WAIT_ACCEPT: '待接单',
+    WAIT_ASSIGN: '等待处理',
     PROCESSING: '处理中',
     COMPLETED: '已完成',
     CLOSED: '已关闭',
@@ -265,7 +282,6 @@ function getStatusText(status: TicketStatus): string {
 function getStatusClass(status: TicketStatus): string {
   const classMap: Record<string, string> = {
     WAIT_ASSIGN: 'pending',
-    WAIT_ACCEPT: 'pending',
     PROCESSING: 'processing',
     COMPLETED: 'completed',
     CLOSED: 'closed',

@@ -17,8 +17,7 @@ export type UViewTagType = 'primary' | 'success' | 'warning' | 'error' | 'info';
  */
 export function getStatusTagType(status: string): UViewTagType {
   const statusMap: Record<string, UViewTagType> = {
-    [TicketStatus.WAIT_ASSIGN]: 'warning',    // 待指派 - 警告色
-    [TicketStatus.WAIT_ACCEPT]: 'primary',    // 待接单 - 主题色
+    [TicketStatus.WAIT_ASSIGN]: 'primary',    // 等待处理 - 主题色
     [TicketStatus.PROCESSING]: 'primary',     // 处理中 - 主题色
     [TicketStatus.COMPLETED]: 'success',      // 已完成 - 成功色
     [TicketStatus.CLOSED]: 'info',            // 已关闭 - 信息色
@@ -33,8 +32,7 @@ export function getStatusTagType(status: string): UViewTagType {
  */
 export function getStatusText(status: string): string {
   const statusTextMap: Record<string, string> = {
-    [TicketStatus.WAIT_ASSIGN]: '待指派',
-    [TicketStatus.WAIT_ACCEPT]: '待接单',
+    [TicketStatus.WAIT_ASSIGN]: '等待处理',
     [TicketStatus.PROCESSING]: '处理中',
     [TicketStatus.COMPLETED]: '待评价',
     [TicketStatus.CLOSED]: '已关闭',

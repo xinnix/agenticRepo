@@ -185,6 +185,7 @@ export class TicketService {
           createdBy: { select: { id: true, username: true, firstName: true, lastName: true } },
           assignedTo: { select: { id: true, username: true, firstName: true, lastName: true } },
           category: { select: { id: true, name: true } },
+          presetArea: { select: { id: true, name: true, code: true } },
           attachments: true,
         },
       }),
@@ -209,13 +210,15 @@ export class TicketService {
         createdBy: true,
         assignedTo: true,
         category: true,
+        presetArea: { select: { id: true, name: true, code: true } },
         attachments: {
           orderBy: { createdAt: 'asc' },
         },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: {
-            user: { select: { id: true, username: true, firstName: true, lastName: true } },
+            user: { select: { id: true, username: true, firstName: true, lastName: true, wxNickname: true, wxAvatarUrl: true, avatar: true } },
+            attachments: true,
           },
         },
         statusHistory: {
@@ -406,8 +409,8 @@ export class TicketService {
   async complete(
     id: string,
     attachmentIds: string[],
-    handlerId: string,
-    currentUser: any,
+    remark?: string,
+    currentUser?: any,
   ) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
@@ -417,9 +420,12 @@ export class TicketService {
       throw new NotFoundException('工单不存在');
     }
 
-    // 只有处理人可以完成工单
-    if (ticket.assignedId !== currentUser.id) {
-      throw new ForbiddenException('只有处理人可以完成工单');
+    // 如果传入了 currentUser，进行权限校验
+    if (currentUser) {
+      // 只有处理人可以完成工单
+      if (ticket.assignedId !== currentUser.id) {
+        throw new ForbiddenException('只有处理人可以完成工单');
+      }
     }
 
     // 状态校验
@@ -434,16 +440,55 @@ export class TicketService {
       },
     });
 
-    // 关联附件
-    if (attachmentIds && attachmentIds.length > 0) {
-      await this.prisma.attachment.updateMany({
-        where: { id: { in: attachmentIds } },
-        data: { ticketId: id },
+    // 如果有处理说明或附件，创建处理人评论
+    if (remark || (attachmentIds && attachmentIds.length > 0)) {
+      const handlerId = currentUser?.id || ticket.assignedId;
+
+      // 验证附件是否存在
+      let validAttachmentIds: string[] = [];
+      if (attachmentIds && attachmentIds.length > 0) {
+        const existingAttachments = await this.prisma.attachment.findMany({
+          where: {
+            id: { in: attachmentIds },
+          },
+          select: { id: true },
+        });
+        validAttachmentIds = existingAttachments.map(a => a.id);
+
+        // 更新附件的工单关联
+        if (validAttachmentIds.length > 0) {
+          await this.prisma.attachment.updateMany({
+            where: { id: { in: validAttachmentIds } },
+            data: { ticketId: id },
+          });
+        }
+      }
+
+      // 创建评论
+      await this.prisma.comment.create({
+        data: {
+          ticketId: id,
+          userId: handlerId,
+          content: remark || '工单已完成',
+          commentType: 'HANDLER',
+          // 关联附件（只关联存在的）
+          ...(validAttachmentIds.length > 0 && {
+            attachments: {
+              connect: validAttachmentIds.map(id => ({ id })),
+            },
+          }),
+        },
       });
     }
 
     // 记录状态历史
-    await this.recordStatusHistory(id, ticket.status, 'COMPLETED', handlerId, '工单完成');
+    await this.recordStatusHistory(
+      id,
+      ticket.status,
+      'COMPLETED',
+      currentUser?.id || ticket.assignedId,
+      remark || '工单完成',
+    );
 
     return this.getOne(id, currentUser);
   }
@@ -588,7 +633,7 @@ export class TicketService {
   }
 
   /**
-   * 开始处理工单 (WAIT_ACCEPT -> PROCESSING)
+   * 开始处理工单 (WAIT_ASSIGN -> PROCESSING)
    */
   async start(id: string, currentUser: any) {
     const ticket = await this.prisma.ticket.findUnique({

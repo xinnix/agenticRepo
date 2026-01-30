@@ -93,10 +93,51 @@ export class TicketStatusService {
   }
 
   /**
-   * 接单（WAIT_ACCEPT -> PROCESSING）
+   * 接单（WAIT_ASSIGN -> PROCESSING）
    */
   async acceptTicket(ticketId: string, handlerId: string) {
-    return this.transition(ticketId, 'PROCESSING', handlerId, '接受工单');
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+    });
+
+    if (!ticket) {
+      throw new ForbiddenException('工单不存在');
+    }
+
+    // 状态校验：只有 WAIT_ASSIGN 状态可以接单
+    if (ticket.status !== 'WAIT_ASSIGN') {
+      throw new ForbiddenException('当前状态不允许接单');
+    }
+
+    // 如果已经有处理人，检查是否为当前用户
+    if (ticket.assignedId && ticket.assignedId !== handlerId) {
+      throw new ForbiddenException('该工单已被其他人接单');
+    }
+
+    // 使用事务更新状态和处理人，并记录历史
+    return this.prisma.$transaction(async (tx) => {
+      // 更新工单状态和分配处理人
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: 'PROCESSING',
+          assignedId: handlerId,
+        },
+      });
+
+      // 记录状态历史
+      await tx.statusHistory.create({
+        data: {
+          ticketId,
+          fromStatus: ticket.status,
+          toStatus: 'PROCESSING',
+          userId: handlerId,
+          remark: '接受工单',
+        },
+      });
+
+      return updated;
+    });
   }
 
   /**

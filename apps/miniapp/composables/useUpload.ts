@@ -150,20 +150,17 @@ export function useUpload() {
       const ossUrl = await attachmentApi.uploadToOss(credentials, filePath, objectName);
       console.log('[OSS] 上传成功:', ossUrl);
 
-      // 4. 创建附件记录
-      const attachment: Attachment = {
-        id: `att_${timestamp}`,
+      // 4. 创建附件记录（调用后端 API）
+      console.log('[OSS] 创建后端附件记录...');
+      const attachment = await attachmentApi.createAttachment({
         url: ossUrl,
         fileName: `uploaded_file${ext}`,
-        fileSize: 0,
+        fileSize: 0, // OSS 直传方式无法获取文件大小
         mimeType: type === 'IMAGE' ? 'image/jpeg' : 'video/mp4',
         type,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      });
 
-      console.log('[OSS] 创建的 Attachment 对象:', JSON.stringify(attachment, null, 2));
-      console.log('[OSS] 图片 URL:', attachment.url);
+      console.log('[OSS] 后端附件记录创建成功:', attachment);
 
       return attachment;
     } catch (error) {

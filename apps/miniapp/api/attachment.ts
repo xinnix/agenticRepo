@@ -113,6 +113,42 @@ export function uploadToOss(
 }
 
 /**
+ * 创建附件记录（用于OSS直传后）
+ * @param data 附件数据
+ */
+export function createAttachment(data: {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  type: 'IMAGE' | 'VIDEO';
+}): Promise<Attachment> {
+  const token = uni.getStorageSync('accessToken');
+
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: `${BASE_URL}/attachments/create-from-url`,
+      method: 'POST',
+      header: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      data,
+      success: (res: any) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          const attachment = res.data.data || res.data;
+          console.log('[创建附件记录成功] 响应数据:', attachment);
+          resolve(attachment);
+        } else {
+          reject(new Error(res.data?.message || '创建附件记录失败'));
+        }
+      },
+      fail: reject,
+    });
+  });
+}
+
+/**
  * 上传单个文件
  * @param filePath 本地文件路径
  * @param type 文件类型（IMAGE/VIDEO）

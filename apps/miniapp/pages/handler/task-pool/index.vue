@@ -163,7 +163,7 @@ function onFilterTabChange(e: any) {
  */
 async function loadTickets(refresh = false) {
   const params: any = {
-    status: 'WAIT_ACCEPT',
+    status: 'WAIT_ASSIGN', // 等待处理状态（可接单或派单）
   };
 
   if (filter.value.categoryId) {

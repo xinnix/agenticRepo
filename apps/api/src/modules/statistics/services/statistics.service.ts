@@ -473,9 +473,9 @@ export class StatisticsService {
       // 总工单数
       this.prisma.ticket.count({ where: timeFilter }),
 
-      // 接单池工单数（待接单）
+      // 接单池工单数（等待处理）
       this.prisma.ticket.count({
-        where: { status: 'WAIT_ACCEPT' },
+        where: { status: 'WAIT_ASSIGN' },
       }),
 
       // 处理中工单数（待处理）
@@ -591,7 +591,6 @@ export class StatisticsService {
     const [
       totalTickets,
       waitAssignTickets,
-      waitAcceptTickets,
       processingTickets,
       completedTickets,
       closedTickets,
@@ -601,14 +600,9 @@ export class StatisticsService {
       // 总工单数
       this.prisma.ticket.count({ where: timeFilter }),
 
-      // 待指派工单数
+      // 等待处理工单数
       this.prisma.ticket.count({
         where: { ...timeFilter, status: 'WAIT_ASSIGN' },
-      }),
-
-      // 待接单工单数
-      this.prisma.ticket.count({
-        where: { ...timeFilter, status: 'WAIT_ACCEPT' },
       }),
 
       // 处理中工单数
@@ -639,6 +633,7 @@ export class StatisticsService {
         orderBy: { createdAt: 'desc' },
         include: {
           category: { select: { id: true, name: true } },
+          presetArea: { select: { id: true, name: true, code: true } },
           assignedTo: { select: { id: true, username: true, firstName: true, lastName: true } },
         },
       }),
@@ -667,7 +662,6 @@ export class StatisticsService {
       summary: {
         totalTickets,
         waitAssignTickets,
-        waitAcceptTickets,
         processingTickets,
         completedTickets,
         closedTickets,

@@ -102,7 +102,7 @@ const userStore = useUserStore();
 // 标签页 - u-tabs 需要使用这种格式
 const tabs = [
   { key: 'all', label: '全部' },
-  { key: String(TicketStatus.WAIT_ASSIGN), label: '待指派' },
+  { key: String(TicketStatus.WAIT_ASSIGN), label: '等待处理' },
   { key: String(TicketStatus.PROCESSING), label: '处理中' },
   { key: String(TicketStatus.COMPLETED), label: '待评价' },
 ];
@@ -203,7 +203,6 @@ onMounted(() => {
 function getStatusBadgeClass(status: string): string {
   const badgeClasses: Record<string, string> = {
     'WAIT_ASSIGN': 'status-wait-assign',
-    'WAIT_ACCEPT': 'status-wait-accept',
     'PROCESSING': 'status-processing',
     'COMPLETED': 'status-completed',
     'CLOSED': 'status-closed',
@@ -216,8 +215,7 @@ function getStatusBadgeClass(status: string): string {
  */
 function getStatusText(status: string): string {
   const statusTexts: Record<string, string> = {
-    'WAIT_ASSIGN': '待指派',
-    'WAIT_ACCEPT': '待接单',
+    'WAIT_ASSIGN': '等待处理',
     'PROCESSING': '处理中',
     'COMPLETED': '已完成',
     'CLOSED': '已关闭',
@@ -230,8 +228,7 @@ function getStatusText(status: string): string {
  */
 function getStatusTagType(status: string): string {
   const tagTypes: Record<string, string> = {
-    'WAIT_ASSIGN': 'info',
-    'WAIT_ACCEPT': 'primary',
+    'WAIT_ASSIGN': 'primary',
     'PROCESSING': 'warning',
     'COMPLETED': 'success',
     'CLOSED': 'default',

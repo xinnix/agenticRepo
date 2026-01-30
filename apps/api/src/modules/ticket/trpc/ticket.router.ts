@@ -56,6 +56,7 @@ const TicketAssignInput = z.object({
 
 const TicketCompleteInput = z.object({
   attachmentIds: z.array(z.string()).optional(),
+  remark: z.string().optional(),
 });
 
 const TicketRateInput = z.object({
@@ -471,7 +472,7 @@ export const ticketRouter = router({
       }
 
       // 状态校验
-      if (!canTransition(ticket.status, 'WAIT_ACCEPT')) {
+      if (!canTransition(ticket.status, 'PROCESSING')) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: '当前状态不允许指派',
@@ -483,7 +484,7 @@ export const ticketRouter = router({
         where: { id: input.id },
         data: {
           assignedId: input.data.assignedId,
-          status: 'WAIT_ACCEPT',
+          status: 'PROCESSING',
         },
       });
 
@@ -492,7 +493,7 @@ export const ticketRouter = router({
         data: {
           ticketId: input.id,
           fromStatus: ticket.status,
-          toStatus: 'WAIT_ACCEPT',
+          toStatus: 'PROCESSING',
           userId: ctx.user!.id,
           remark: '指派给处理人',
         },
@@ -518,26 +519,29 @@ export const ticketRouter = router({
         });
       }
 
-      // 只有被指派的处理人可以接单
-      if (ticket.assignedId !== ctx.user?.id) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: '只有被指派的处理人可以接单',
-        });
-      }
-
-      // 状态校验
-      if (!canTransition(ticket.status, 'PROCESSING')) {
+      // 状态校验：只有 WAIT_ASSIGN 和 PROCESSING 状态可以接单
+      if (ticket.status !== 'WAIT_ASSIGN' && ticket.status !== 'PROCESSING') {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: '当前状态不允许接单',
         });
       }
 
-      // 更新工单
+      // 如果已经有处理人，检查是否为当前用户
+      if (ticket.assignedId && ticket.assignedId !== ctx.user?.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '该工单已被其他人接单',
+        });
+      }
+
+      // 更新工单：设置处理人并更新状态为 PROCESSING
       const updated = await ctx.prisma.ticket.update({
         where: { id: input.id },
-        data: { status: 'PROCESSING' },
+        data: {
+          assignedId: ctx.user!.id,
+          status: 'PROCESSING',
+        },
       });
 
       // 记录状态历史
@@ -547,7 +551,7 @@ export const ticketRouter = router({
           fromStatus: ticket.status,
           toStatus: 'PROCESSING',
           userId: ctx.user!.id,
-          remark: '接受工单',
+          remark: ticket.status === 'WAIT_ASSIGN' ? '接受工单' : '继续处理工单',
         },
       });
 
@@ -599,11 +603,42 @@ export const ticketRouter = router({
         },
       });
 
-      // 关联附件
-      if (input.data.attachmentIds && input.data.attachmentIds.length > 0) {
-        await ctx.prisma.attachment.updateMany({
-          where: { id: { in: input.data.attachmentIds } },
-          data: { ticketId: input.id },
+      // 如果有处理说明或附件，创建处理人评论
+      if (input.data.remark || (input.data.attachmentIds && input.data.attachmentIds.length > 0)) {
+        // 验证附件是否存在
+        let validAttachmentIds: string[] = [];
+        if (input.data.attachmentIds && input.data.attachmentIds.length > 0) {
+          const existingAttachments = await ctx.prisma.attachment.findMany({
+            where: {
+              id: { in: input.data.attachmentIds },
+            },
+            select: { id: true },
+          });
+          validAttachmentIds = existingAttachments.map(a => a.id);
+
+          // 更新附件的工单关联
+          if (validAttachmentIds.length > 0) {
+            await ctx.prisma.attachment.updateMany({
+              where: { id: { in: validAttachmentIds } },
+              data: { ticketId: input.id },
+            });
+          }
+        }
+
+        // 创建评论
+        await ctx.prisma.comment.create({
+          data: {
+            ticketId: input.id,
+            userId: ctx.user!.id,
+            content: input.data.remark || '工单已完成',
+            commentType: 'HANDLER',
+            // 关联附件（只关联存在的）
+            ...(validAttachmentIds.length > 0 && {
+              attachments: {
+                connect: validAttachmentIds.map(id => ({ id })),
+              },
+            }),
+          },
         });
       }
 
@@ -614,7 +649,7 @@ export const ticketRouter = router({
           fromStatus: ticket.status,
           toStatus: 'COMPLETED',
           userId: ctx.user!.id,
-          remark: '工单完成',
+          remark: input.data.remark || '工单完成',
         },
       });
 
@@ -751,7 +786,7 @@ export const ticketRouter = router({
    */
   getAllStates: publicProcedure
     .query(() => {
-      return ['WAIT_ASSIGN', 'WAIT_ACCEPT', 'PROCESSING', 'COMPLETED', 'CLOSED'];
+      return ['WAIT_ASSIGN', 'PROCESSING', 'COMPLETED', 'CLOSED'];
     }),
 
   // ============================================
@@ -824,13 +859,12 @@ export const ticketRouter = router({
 /**
  * 状态流转规则
  */
-const TICKET_STATE_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  WAIT_ASSIGN: ['PROCESSING', 'CLOSED'], // 指派后直接进入处理中
-  WAIT_ACCEPT: ['PROCESSING', 'WAIT_ASSIGN', 'CLOSED'],
+const TICKET_STATE_TRANSITIONS = {
+  WAIT_ASSIGN: ['PROCESSING', 'CLOSED'], // 可以直接进入处理中或关闭
   PROCESSING: ['COMPLETED', 'WAIT_ASSIGN', 'CLOSED'],
   COMPLETED: ['CLOSED'],
   CLOSED: [],
-};
+} as const;
 
 /**
  * 检查状态流转是否合法
@@ -844,14 +878,14 @@ function canTransition(fromStatus: TicketStatus, toStatus: TicketStatus): boolea
  * 获取状态可执行的操作
  */
 function getAvailableActionsForStatus(status: TicketStatus): string[] {
-  const actions: Record<TicketStatus, string[]> = {
-    WAIT_ASSIGN: ['assign', 'close'],
-    WAIT_ACCEPT: ['accept', 'reassign', 'close'],
+  const actions = {
+    WAIT_ASSIGN: ['assign', 'accept', 'close'],
     PROCESSING: ['complete', 'reassign', 'close'],
     COMPLETED: ['close'],
     CLOSED: [],
   };
-  return actions[status] || [];
+
+  return (actions[status as keyof typeof actions] as string[]) || [];
 }
 
 /**

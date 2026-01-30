@@ -110,10 +110,10 @@ export class TicketController {
   @ApiOperation({ summary: '完成工单' })
   async complete(
     @Param('id') id: string,
-    @Body() body: { attachmentIds?: string[] },
+    @Body() body: { attachmentIds?: string[]; remark?: string },
     @CurrentUser() user: any,
   ) {
-    return this.ticketService.complete(id, body.attachmentIds || [], user.id, user);
+    return this.ticketService.complete(id, body.attachmentIds || [], body.remark, user);
   }
 
   @Post(':id/close')
