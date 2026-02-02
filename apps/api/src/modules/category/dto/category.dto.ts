@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, IsNotEmpty, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import type { AssignType } from '@opencode/database';
 
@@ -45,6 +45,13 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsEnum(['MANUAL', 'AUTO', 'ROUND_ROBIN'])
   assignType?: AssignTypeEnum;
+
+  @ApiProperty({ description: '处理时限（天），留空使用优先级默认', required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  deadlineDays?: number | null;
 }
 
 export class UpdateCategoryDto {
@@ -87,6 +94,13 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsEnum(['MANUAL', 'AUTO', 'ROUND_ROBIN'])
   assignType?: AssignTypeEnum;
+
+  @ApiProperty({ description: '处理时限（天），留空使用优先级默认', required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  deadlineDays?: number | null;
 }
 
 export class QueryCategoryDto {

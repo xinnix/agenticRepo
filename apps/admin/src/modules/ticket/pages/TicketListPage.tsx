@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useList, useOne, useUpdate } from "@refinedev/core";
 import { List } from "@refinedev/antd";
-import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
+import { useTrpcQuery, useTrpcMutation } from "../../../shared/hooks/useTrpcQuery";
 import {
   Table,
   Button,
@@ -20,6 +20,7 @@ import {
   Form,
   message,
   Image,
+  Dropdown,
 } from "antd";
 import {
   EyeOutlined,
@@ -28,6 +29,8 @@ import {
   ClockCircleOutlined,
   UserOutlined,
   FileImageOutlined,
+  WarningOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 
 // 本地类型定义
@@ -97,6 +100,20 @@ export const TicketListPage = () => {
     { enabled: true }
   );
 
+  // 优先级更新 mutation
+  const { mutate: updatePriority } = useTrpcMutation(
+    "ticket.updatePriority",
+    {
+      onSuccess: () => {
+        message.success("优先级已更新");
+        query.refetch();
+      },
+      onError: (error: any) => {
+        message.error("更新优先级失败: " + (error.message || "未知错误"));
+      },
+    }
+  );
+
   // 格式化办事员列表为 Select options
   const handlerOptions = useMemo(() => {
     const handlers = handlersData?.items || [];
@@ -117,10 +134,27 @@ export const TicketListPage = () => {
     return stats;
   }, [result?.data]);
 
-  // 计算超时工单数量
+  // 计算超时工单数量和临期工单数量
   const overdueCount = useMemo(() => {
-    return result?.data?.filter((t: any) => t.isOverdue).length || 0;
+    return result?.data?.filter((ticket: any) => {
+      if (!ticket.deadlineAt) return false;
+      if (ticket.status === 'COMPLETED' || ticket.status === 'CLOSED') return false;
+      return new Date() > new Date(ticket.deadlineAt);
+    }).length || 0;
   }, [result?.data]);
+
+  const urgentCount = useMemo(() => {
+    return result?.data?.filter((ticket: any) => {
+      if (!ticket.deadlineAt) return false;
+      if (ticket.status === 'COMPLETED' || ticket.status === 'CLOSED') return false;
+      const hoursRemaining = (new Date(ticket.deadlineAt).getTime() - new Date().getTime()) / (1000 * 60 * 60);
+      return hoursRemaining > 0 && hoursRemaining < 24;
+    }).length || 0;
+  }, [result?.data]);
+
+  const normalCount = useMemo(() => {
+    return (result?.total || 0) - overdueCount - urgentCount;
+  }, [result?.total, overdueCount, urgentCount]);
 
   // 表格列配置
   const columns = [
@@ -220,23 +254,74 @@ export const TicketListPage = () => {
       render: (val: string) => new Date(val).toLocaleString("zh-CN"),
     },
     {
+      title: "截止时间",
+      dataIndex: "deadlineAt",
+      width: 150,
+      render: (deadlineAt: string | null, record: any) => {
+        if (!deadlineAt) return '-';
+
+        const now = new Date();
+        const deadline = new Date(deadlineAt);
+        const isOverdue = now > deadline &&
+                          record.status !== 'COMPLETED' &&
+                          record.status !== 'CLOSED';
+
+        if (isOverdue) {
+          return <Tag color="red">已超时</Tag>;
+        }
+
+        const hoursRemaining = Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60));
+
+        if (hoursRemaining < 24) {
+          return <Tag color="orange">剩余 {hoursRemaining} 小时</Tag>;
+        } else {
+          const daysRemaining = Math.floor(hoursRemaining / 24);
+          return <Tag color="green">剩余 {daysRemaining} 天</Tag>;
+        }
+      }
+    },
+    {
       title: "操作",
       width: 120,
       fixed: "right" as const,
       render: (_: any, record: any) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            查看
-          </Button>
-        </Space>
+        <Dropdown
+          menu={{
+            items: [
+              {
+                key: 'view',
+                label: '查看详情',
+                onClick: () => handleViewDetail(record),
+              },
+              {
+                key: 'priority',
+                label: '调整优先级',
+                children: [
+                  {
+                    key: 'normal',
+                    label: '普通优先级',
+                    onClick: () => handleUpdatePriority(record.id, 'NORMAL'),
+                  },
+                  {
+                    key: 'urgent',
+                    label: '紧急优先级',
+                    onClick: () => handleUpdatePriority(record.id, 'URGENT'),
+                  },
+                ],
+              },
+            ],
+          }}
+        >
+          <Button type="link">操作</Button>
+        </Dropdown>
       ),
     },
   ];
+
+  // 更新优先级
+  const handleUpdatePriority = (ticketId: string, priority: 'NORMAL' | 'URGENT') => {
+    updatePriority({ id: ticketId, priority });
+  };
 
   // 查看详情
   const handleViewDetail = (record: any) => {
@@ -409,65 +494,41 @@ export const TicketListPage = () => {
 
         {/* 统计卡片 */}
         <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={4}>
+          <Col span={6}>
             <Card>
               <Statistic
-                title="总工单"
+                title="总工单数"
                 value={result?.total || 0}
-                valueStyle={{ fontSize: 20 }}
+                prefix={<FileTextOutlined />}
               />
             </Card>
           </Col>
-          <Col span={4}>
+          <Col span={6}>
             <Card>
               <Statistic
-                title="待处理"
-                value={statusStats.WAIT_ASSIGN || 0}
-                valueStyle={{ fontSize: 20, color: "#ff4d4f" }}
-              />
-            </Card>
-          </Col>
-          <Col span={4}>
-            <Card>
-              <Statistic
-                title="处理中"
-                value={statusStats.PROCESSING || 0}
-                valueStyle={{ fontSize: 20, color: "#1890ff" }}
-              />
-            </Card>
-          </Col>
-          <Col span={4}>
-            <Card>
-              <Statistic
-                title="已完成"
-                value={statusStats.COMPLETED || 0}
-                valueStyle={{ fontSize: 20, color: "#52c41a" }}
-              />
-            </Card>
-          </Col>
-          <Col span={4}>
-            <Card>
-              <Statistic
-                title="超时工单"
+                title="已逾期"
                 value={overdueCount}
-                valueStyle={{ fontSize: 20, color: "#faad14" }}
+                valueStyle={{ color: '#cf1322' }}
+                prefix={<ClockCircleOutlined />}
               />
             </Card>
           </Col>
-          <Col span={4}>
+          <Col span={6}>
             <Card>
               <Statistic
-                title="完成率"
-                value={
-                  result?.total
-                    ? (
-                        ((statusStats.COMPLETED || 0) / result.total) *
-                        100
-                      ).toFixed(1)
-                    : "0"
-                }
-                suffix="%"
-                valueStyle={{ fontSize: 20 }}
+                title="24小时内到期"
+                value={urgentCount}
+                valueStyle={{ color: '#fa8c16' }}
+                prefix={<WarningOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="正常工单"
+                value={normalCount}
+                valueStyle={{ color: '#52c41a' }}
               />
             </Card>
           </Col>

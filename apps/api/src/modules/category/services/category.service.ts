@@ -14,6 +14,7 @@ export interface CategoryTree {
   status: string;
   level: number;
   assignType: AssignType;
+  deadlineDays?: number | null;
   createdAt: Date;
   updatedAt: Date;
   children: CategoryTree[];
@@ -172,6 +173,7 @@ export class CategoryService {
     sortOrder?: number;
     status?: string;
     assignType?: AssignType;
+    deadlineDays?: number | null;
   }) {
     // 计算层级
     let level = 1;
@@ -194,6 +196,7 @@ export class CategoryService {
         sortOrder: data.sortOrder,
         status: data.status,
         assignType: data.assignType,
+        deadlineDays: data.deadlineDays,
         level,
       },
       include: {
@@ -218,6 +221,7 @@ export class CategoryService {
       sortOrder?: number;
       status?: string;
       assignType?: AssignType;
+      deadlineDays?: number | null;
     },
   ) {
     // 检查是否存在

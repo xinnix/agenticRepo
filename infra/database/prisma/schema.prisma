@@ -216,6 +216,7 @@ model Category {
   // 新增字段
   level      Int        @default(1)
   assignType AssignType @default(MANUAL)
+  deadlineDays  Int?  // 处理时限配置（天），null = 使用优先级回退逻辑
 
   // 新增关联：工单
   tickets Ticket[]

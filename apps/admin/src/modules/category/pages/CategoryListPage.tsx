@@ -1,6 +1,6 @@
 import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
 import { List } from "@refinedev/antd";
-import { Table, Button, Modal, Form, Input, Select, Space, message, Tag, Popconfirm } from "antd";
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Space, message, Tag, Popconfirm } from "antd";
 import { useState } from "react";
 import { PlusOutlined } from "@ant-design/icons";
 
@@ -13,6 +13,8 @@ interface CategoryNode {
   icon: string | null;
   sortOrder: number | null;
   status: string;
+  assignType: string;
+  deadlineDays?: number | null;
   parent?: {
     id: string;
     name: string;
@@ -42,6 +44,17 @@ export const CategoryListPage = () => {
     { title: "描述", dataIndex: "description", width: 200, render: (val: string) => val || "-" },
     { title: "图标", dataIndex: "icon", width: 100, render: (val: string) => val || "-" },
     { title: "排序", dataIndex: "sortOrder", width: 80, render: (val: number | null) => val ?? 0 },
+    {
+      title: "处理时限",
+      dataIndex: "deadlineDays",
+      width: 120,
+      render: (days: number | null | undefined) => {
+        if (days === null || days === undefined) {
+          return <Tag color="default">系统默认</Tag>;
+        }
+        return <Tag color="blue">{days} 天</Tag>;
+      }
+    },
     {
       title: "状态",
       dataIndex: "status",
@@ -110,6 +123,8 @@ export const CategoryListPage = () => {
       icon: record.icon,
       sortOrder: record.sortOrder ?? 0,
       status: record.status,
+      assignType: record.assignType,
+      deadlineDays: record.deadlineDays,
     });
     setIsModalVisible(true);
   };
@@ -140,7 +155,7 @@ export const CategoryListPage = () => {
       const { id, ...dataValues } = values;
 
       // Convert string to number for numeric fields (Ant Design Input type="number" returns string)
-      const numericFields = ['sortOrder'];
+      const numericFields = ['sortOrder', 'deadlineDays'];
       const processedValues = { ...dataValues };
       numericFields.forEach((field: string) => {
         if (processedValues[field]) {
@@ -242,6 +257,18 @@ export const CategoryListPage = () => {
                 <Select.Option value="ACTIVE">启用</Select.Option>
                 <Select.Option value="INACTIVE">禁用</Select.Option>
               </Select>
+            </Form.Item>
+            <Form.Item
+              label="处理时限（天）"
+              name="deadlineDays"
+              extra="留空表示使用系统默认（紧急4小时/普通24小时）"
+            >
+              <InputNumber
+                placeholder="输入天数，如：1, 3, 7"
+                min={1}
+                max={365}
+                style={{ width: '100%' }}
+              />
             </Form.Item>
 
           </Form>

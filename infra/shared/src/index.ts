@@ -588,6 +588,8 @@ export const CategorySchema = {
     icon: z.string().optional(),
     sortOrder: z.number().optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
+    assignType: z.enum(["MANUAL", "AUTO", "ROUND_ROBIN"]).default("MANUAL"),
+    deadlineDays: z.number().int().min(1).max(365).nullable().optional(),
   }),
 
   // updateInput is the data part only (id is handled by tRPC helper wrapper)
@@ -599,6 +601,8 @@ export const CategorySchema = {
     icon: z.string().nullable().optional(),
     sortOrder: z.number().optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    assignType: z.enum(["MANUAL", "AUTO", "ROUND_ROBIN"]).optional(),
+    deadlineDays: z.number().int().min(1).max(365).nullable().optional(),
   }),
 
   getOneInput: z.object({ id: z.string() }),

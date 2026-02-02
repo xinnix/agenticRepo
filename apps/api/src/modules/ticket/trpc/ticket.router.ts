@@ -251,9 +251,29 @@ export const ticketRouter = router({
       const ticketNumber = await generateTicketNumber(ctx.prisma);
 
       // 计算截止时间
-      const deadlineHours = input.priority === 'URGENT' ? 4 : 24;
-      const deadlineAt = new Date();
-      deadlineAt.setHours(deadlineAt.getHours() + deadlineHours);
+      let deadlineAt: Date;
+
+      if (input.priority === 'URGENT') {
+        // 紧急优先级：固定3天，忽略分类配置
+        deadlineAt = new Date();
+        deadlineAt.setDate(deadlineAt.getDate() + 3);
+      } else {
+        // 普通优先级：使用分类配置的时限
+        const category = await ctx.prisma.category.findUnique({
+          where: { id: input.categoryId },
+          select: { deadlineDays: true },
+        });
+
+        if (category?.deadlineDays !== null && category?.deadlineDays !== undefined) {
+          // 使用分类配置的天数
+          deadlineAt = new Date();
+          deadlineAt.setDate(deadlineAt.getDate() + category.deadlineDays);
+        } else {
+          // 分类未设置时限，默认24小时
+          deadlineAt = new Date();
+          deadlineAt.setHours(deadlineAt.getHours() + 24);
+        }
+      }
 
       // 创建工单
       const ticket = await ctx.prisma.ticket.create({
@@ -262,12 +282,12 @@ export const ticketRouter = router({
           title: input.title,
           description: input.description,
           categoryId: input.categoryId,
-          priority: input.priority,
+          priority: input.priority || 'NORMAL',  // 默认普通优先级
           locationType: input.locationType || 'MANUAL',
           location: input.location,
           presetAreaId: input.presetAreaId,
           createdById: ctx.user!.id,
-          deadlineAt,
+          deadlineAt,  // 使用计算出的截止时间
         },
         include: {
           createdBy: {
@@ -320,6 +340,88 @@ export const ticketRouter = router({
       }
 
       return ticket;
+    }),
+
+  /**
+   * 更新工单优先级
+   */
+  updatePriority: permissionProcedure('ticket', 'update')
+    .input(z.object({
+      id: z.string(),
+      priority: z.enum(['NORMAL', 'URGENT']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, priority } = input;
+
+      // 检查工单是否存在
+      const ticket = await ctx.prisma.ticket.findUnique({
+        where: { id },
+      });
+
+      if (!ticket) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: '工单不存在',
+        });
+      }
+
+      // 权限校验
+      const isSuperAdmin = ctx.user?.roles?.some((r: any) => r.slug === 'super_admin');
+      const isDeptAdmin = ctx.user?.roles?.some((r: any) => r.slug === 'dept_admin');
+
+      if (ticket.createdById !== ctx.user?.id && !isSuperAdmin && !isDeptAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '无权修改此工单优先级',
+        });
+      }
+
+      // 计算新的截止时间
+      let deadlineAt: Date;
+
+      if (priority === 'URGENT') {
+        // 紧急优先级：固定3天
+        deadlineAt = new Date();
+        deadlineAt.setDate(deadlineAt.getDate() + 3);
+      } else {
+        // 普通优先级：使用分类配置的时限
+        const category = await ctx.prisma.category.findUnique({
+          where: { id: ticket.categoryId },
+          select: { deadlineDays: true },
+        });
+
+        if (category?.deadlineDays !== null && category?.deadlineDays !== undefined) {
+          // 使用分类配置的天数
+          deadlineAt = new Date();
+          deadlineAt.setDate(deadlineAt.getDate() + category.deadlineDays);
+        } else {
+          // 分类未设置时限，默认24小时
+          deadlineAt = new Date();
+          deadlineAt.setHours(deadlineAt.getHours() + 24);
+        }
+      }
+
+      // 更新工单优先级和截止时间
+      const updatedTicket = await ctx.prisma.ticket.update({
+        where: { id },
+        data: {
+          priority,
+          deadlineAt,
+        },
+        include: {
+          category: { select: { id: true, name: true } },
+          createdBy: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+
+      return updatedTicket;
     }),
 
   /**
