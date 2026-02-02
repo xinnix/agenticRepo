@@ -23,6 +23,12 @@ export class AreaController {
     });
   }
 
+  @Get('by-scene')
+  @ApiOperation({ summary: '通过小程序码 scene 查询区域' })
+  async findByScene(@Query('scene') scene: string) {
+    return this.areaService.getByScene(scene);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '获取区域详情' })
   async findOne(@Param('id') id: string) {

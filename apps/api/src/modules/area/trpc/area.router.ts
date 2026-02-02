@@ -229,4 +229,53 @@ export const areaRouter = router({
         where: { id: input.id },
       });
     }),
+
+  /**
+   * 生成小程序码
+   */
+  generateQrCode: publicProcedure
+    .input(z.object({
+      id: z.string(),
+      forceRegenerate: z.boolean().optional().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { wxacodeService } = ctx;
+      return wxacodeService.generateAreaQrCode(input.id, input.forceRegenerate);
+    }),
+
+  /**
+   * 批量生成小程序码
+   */
+  batchGenerateQrCodes: publicProcedure
+    .input(z.object({
+      ids: z.array(z.string()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { wxacodeService } = ctx;
+      return wxacodeService.batchGenerateQrCodes(input.ids);
+    }),
+
+  /**
+   * 删除小程序码
+   */
+  deleteQrCode: publicProcedure
+    .input(z.object({
+      id: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { wxacodeService } = ctx;
+      return wxacodeService.deleteQrCode(input.id);
+    }),
+
+  /**
+   * 通过 scene 查询区域（供小程序使用）
+   */
+  getByScene: publicProcedure
+    .input(z.object({
+      scene: z.string(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const { wxacodeService } = ctx;
+      return wxacodeService.getAreaByScene(input.scene);
+    }),
 });

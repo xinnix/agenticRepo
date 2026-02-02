@@ -765,6 +765,20 @@ export const PresetAreaSchema = {
   }),
 
   deleteInput: z.object({ id: z.string() }),
+
+  // 小程序码相关
+  generateQrCodeInput: z.object({
+    id: z.string(),
+    forceRegenerate: z.boolean().optional().default(false),
+  }),
+
+  batchGenerateQrCodesInput: z.object({
+    ids: z.array(z.string()),
+  }),
+
+  deleteQrCodeInput: z.object({
+    id: z.string(),
+  }),
 };
 
 // ============================================

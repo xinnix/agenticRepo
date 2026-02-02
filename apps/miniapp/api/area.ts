@@ -20,3 +20,10 @@ export function getAreaList(params?: {
 export function getAreaDetail(id: string): Promise<PresetArea> {
   return get<PresetArea>(`/areas/${id}`);
 }
+
+/**
+ * 通过小程序码 scene 查询区域
+ */
+export function getAreaByScene(scene: string): Promise<PresetArea | null> {
+  return get<PresetArea | null>('/areas/by-scene', { scene });
+}

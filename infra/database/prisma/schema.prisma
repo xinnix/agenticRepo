@@ -392,6 +392,12 @@ model PresetArea {
   sortOrder Int?
   isActive  Boolean @default(true)
 
+  // 小程序码相关
+  wxacodeUrl       String?    // 小程序码 OSS URL
+  wxacodePath      String?    // 小程序码 OSS 对象路径（用于删除）
+  wxacodeScene     String?    @unique // 小程序码 scene 参数（用于反向查询区域）
+  wxacodeGeneratedAt DateTime? // 生成时间
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

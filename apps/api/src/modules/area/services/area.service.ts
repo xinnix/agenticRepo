@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { WxacodeService } from './wxacode.service';
 
 @Injectable()
 export class AreaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wxacodeService: WxacodeService,
+  ) {}
 
   async getMany(params: {
     page?: number;
@@ -38,5 +42,9 @@ export class AreaService {
     return this.prisma.presetArea.findUnique({
       where: { id },
     });
+  }
+
+  async getByScene(scene: string) {
+    return this.wxacodeService.getAreaByScene(scene);
   }
 }

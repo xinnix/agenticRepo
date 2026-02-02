@@ -1,8 +1,9 @@
 import { useList, useCreate, useUpdate, useDelete, useList as useDepartments } from "@refinedev/core";
 import { List } from "@refinedev/antd";
-import { Table, Button, Modal, Form, Input, InputNumber, Space, message, Popconfirm, Tag, Switch, Select } from "antd";
+import { Table, Button, Modal, Form, Input, InputNumber, Space, message, Popconfirm, Tag, Switch, Select, Image } from "antd";
 import { useState } from "react";
 import { PlusOutlined } from "@ant-design/icons";
+import { trpcClient } from "@/shared/dataProvider/dataProvider";
 
 interface AreaNode {
   id: string;
@@ -10,6 +11,9 @@ interface AreaNode {
   code: string;
   sortOrder: number | null;
   isActive: boolean;
+  wxacodeUrl?: string | null;
+  wxacodePath?: string | null;
+  wxacodeGeneratedAt?: string | null;
   department?: {
     id: string;
     name: string;
@@ -21,6 +25,7 @@ interface AreaNode {
 export const AreaListPage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AreaNode | null>(null);
+  const [qrCodeLoading, setQrCodeLoading] = useState<Record<string, boolean>>({});
   const [form] = Form.useForm();
 
   const { result, query } = useList<AreaNode>({
@@ -62,6 +67,44 @@ export const AreaListPage = () => {
       key: "department",
       width: 150,
       render: (val: string) => val || <Tag color="default">未分配</Tag>,
+    },
+    {
+      title: "小程序码",
+      key: "wxacode",
+      width: 200,
+      render: (_: any, record: AreaNode) => (
+        <Space size="small">
+          {record.wxacodeUrl ? (
+            <>
+              <Image
+                width={50}
+                height={50}
+                src={record.wxacodeUrl}
+                preview={{
+                  mask: '点击预览'
+                }}
+                style={{ cursor: 'pointer' }}
+              />
+              <Button
+                type="link"
+                size="small"
+                onClick={() => handleRegenerateQrCode(record.id)}
+              >
+                重新生成
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => handleGenerateQrCode(record.id)}
+              loading={qrCodeLoading[record.id]}
+            >
+              生成小程序码
+            </Button>
+          )}
+        </Space>
+      ),
     },
     {
       title: "排序",
@@ -155,6 +198,54 @@ export const AreaListPage = () => {
     );
   };
 
+  /**
+   * 生成小程序码
+   */
+  const handleGenerateQrCode = async (id: string) => {
+    try {
+      setQrCodeLoading(prev => ({ ...prev, [id]: true }));
+      const loadingKey = 'generating';
+      message.loading({ content: '生成中...', key: loadingKey });
+
+      await (trpcClient as any).area.generateQrCode.mutate({
+        id,
+        forceRegenerate: false,
+      });
+
+      message.success({ content: '小程序码生成成功', key: loadingKey });
+      query.refetch();
+    } catch (error) {
+      console.error('生成小程序码失败:', error);
+      message.error('生成失败，请重试');
+    } finally {
+      setQrCodeLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  /**
+   * 重新生成小程序码
+   */
+  const handleRegenerateQrCode = async (id: string) => {
+    try {
+      setQrCodeLoading(prev => ({ ...prev, [id]: true }));
+      const loadingKey = 'regenerating';
+      message.loading({ content: '重新生成中...', key: loadingKey });
+
+      await (trpcClient as any).area.generateQrCode.mutate({
+        id,
+        forceRegenerate: true,
+      });
+
+      message.success({ content: '小程序码重新生成成功', key: loadingKey });
+      query.refetch();
+    } catch (error) {
+      console.error('重新生成小程序码失败:', error);
+      message.error('重新生成失败，请重试');
+    } finally {
+      setQrCodeLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
@@ -221,7 +312,7 @@ export const AreaListPage = () => {
             total: result?.total || 0,
             showSizeChanger: true,
           }}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1300 }}
         />
 
         <Modal

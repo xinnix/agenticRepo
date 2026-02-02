@@ -414,7 +414,125 @@ async function handleSubmit() {
 onMounted(() => {
   loadCategories();
   loadAreas();
+  // 处理小程序码 scene 参数
+  handleSceneParameter();
 });
+
+/**
+ * 处理小程序码 scene 参数
+ * scene 格式: a{16位哈希}
+ */
+async function handleSceneParameter() {
+  const options = uni.getLaunchOptionsSync();
+  console.log('[Scene] 完整启动参数:', JSON.stringify(options, null, 2));
+
+  // scene 参数在 query 中，不在 scene 字段中
+  // options.scene 是启动场景码（数字），如 1047 表示扫描小程序码
+  const sceneValue = options.query?.scene;
+
+  if (sceneValue) {
+    const scene = decodeURIComponent(sceneValue);
+    console.log('[Scene] 原始 scene (query.scene):', sceneValue);
+    console.log('[Scene] 解码后 scene:', scene);
+    console.log('[Scene] scene 长度:', scene.length);
+    console.log('[Scene] scene 类型:', typeof scene);
+
+    // 使用新的 API 通过 scene 查询区域
+    try {
+      uni.showLoading({ title: '加载中...' });
+      console.log('[Scene] 准备调用 API，scene =', scene);
+      const area = await areaApi.getAreaByScene(scene);
+      console.log('[Scene] API 返回结果:', area);
+
+      if (area) {
+        formData.value.presetAreaId = area.id;
+        selectedAreaName.value = area.name;
+
+        uni.showToast({
+          title: `已选择区域: ${area.name}`,
+          icon: 'success',
+          duration: 2000,
+        });
+
+        console.log('[Scene] 区域自动填充成功:', area);
+      } else {
+        console.warn('[Scene] 未找到 scene 对应的区域:', scene);
+        uni.showToast({
+          title: '未找到对应区域',
+          icon: 'none',
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      console.error('[Scene] 查询区域失败:', error);
+      uni.showToast({
+        title: '查询区域失败',
+        icon: 'none',
+        duration: 2000,
+      });
+    } finally {
+      uni.hideLoading();
+    }
+  } else {
+    console.log('[Scene] 无 scene 参数，正常进入页面');
+  }
+}
+
+/**
+ * 自动填充区域
+ * @param areaCode 区域代码（不是ID）
+ * @deprecated 使用 handleSceneParameter 代替
+ */
+async function autoFillArea(areaCode: string) {
+  console.log('[AutoFill] 开始自动填充区域, areaCode:', areaCode);
+
+  // 从已加载的列表中查找并填充（使用code匹配）
+  const area = areaList.value.find(a => a.code === areaCode);
+
+  if (area) {
+    formData.value.presetAreaId = area.id;
+    selectedAreaName.value = area.name;
+
+    uni.showToast({
+      title: `已选择区域: ${area.name}`,
+      icon: 'success',
+      duration: 2000,
+    });
+
+    console.log('[AutoFill] 区域自动填充成功:', area);
+  } else {
+    console.log('[AutoFill] 区域列表中未找到，尝试重新加载');
+
+    // 如果列表中没有，重新加载
+    try {
+      await loadAreas();
+      const reloadedArea = areaList.value.find(a => a.code === areaCode);
+
+      if (reloadedArea) {
+        formData.value.presetAreaId = reloadedArea.id;
+        selectedAreaName.value = reloadedArea.name;
+
+        uni.showToast({
+          title: `已选择区域: ${reloadedArea.name}`,
+          icon: 'success',
+          duration: 2000,
+        });
+
+        console.log('[AutoFill] 重新加载后区域自动填充成功:', reloadedArea);
+      } else {
+        console.warn('[AutoFill] 未找到区域代码:', areaCode);
+
+        uni.showToast({
+          title: '未找到对应区域',
+          icon: 'none',
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      console.error('[AutoFill] 重新加载区域失败:', error);
+    }
+  }
+}
 </script>
 
 <style scoped>

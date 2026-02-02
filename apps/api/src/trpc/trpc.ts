@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
+import { WxacodeService } from "../modules/area/services/wxacode.service";
 import jwt from "jsonwebtoken";
 
 // Global PrismaService reference
@@ -8,6 +9,13 @@ let prismaServiceInstance: PrismaService | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
   prismaServiceInstance = prisma;
+};
+
+// Global WxacodeService reference
+let wxacodeServiceInstance: WxacodeService | null = null;
+
+export const setWxacodeService = (service: WxacodeService) => {
+  wxacodeServiceInstance = service;
 };
 
 // User interface for context
@@ -98,6 +106,7 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
 // Create context with optional user (from JWT verification)
 export const createContext = async (opts: any) => {
   const prisma = prismaServiceInstance || opts?.prisma;
+  const wxacodeService = wxacodeServiceInstance || opts?.wxacodeService;
   const req = opts?.req;
 
   // Verify JWT token and get user
@@ -108,6 +117,7 @@ export const createContext = async (opts: any) => {
 
   return {
     prisma,
+    wxacodeService,
     req,
     res: opts?.res,
     user,
