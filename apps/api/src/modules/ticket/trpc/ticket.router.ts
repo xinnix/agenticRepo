@@ -717,17 +717,9 @@ export const ticketRouter = router({
             select: { id: true },
           });
           validAttachmentIds = existingAttachments.map(a => a.id);
-
-          // 更新附件的工单关联
-          if (validAttachmentIds.length > 0) {
-            await ctx.prisma.attachment.updateMany({
-              where: { id: { in: validAttachmentIds } },
-              data: { ticketId: input.id },
-            });
-          }
         }
 
-        // 创建评论
+        // 创建评论，通过 connect 关联附件（不更新 ticketId，避免显示在工单相关图片中）
         await ctx.prisma.comment.create({
           data: {
             ticketId: input.id,
