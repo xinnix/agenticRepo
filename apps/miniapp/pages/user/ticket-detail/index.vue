@@ -9,23 +9,36 @@
     <!-- 工单详情内容 -->
     <scroll-view v-else class="content-wrapper" scroll-y>
       <!-- 工单编号卡片 -->
-      <view class="card ticket-number-card">
+      <view class="card ticket-number-card" :class="{ closed: ticket.status === 'CLOSED' }">
         <view class="card-header">
           <text class="ticket-number">#{{ ticket.ticketNumber }}</text>
           <view class="status-badge" :class="getStatusClass(ticket.status)">
             <text>{{ getStatusText(ticket.status) }}</text>
           </view>
         </view>
-        <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
-        </view>
-        <view class="progress-steps">
-          <view v-for="(step, index) in steps" :key="index" class="step-item"
-            :class="{ active: index <= currentIndex }">
-            <view class="step-dot"></view>
-            <text class="step-label">{{ step.label }}</text>
+
+        <!-- 关闭提示 -->
+        <view v-if="ticket.status === 'CLOSED' && closeReason" class="close-notice">
+          <view class="close-notice-icon">!</view>
+          <view class="close-notice-content">
+            <text class="close-notice-title">工单已关闭</text>
+            <text class="close-notice-reason">{{ closeReason }}</text>
           </view>
         </view>
+
+        <!-- 进度条和步骤（仅在非关闭状态显示） -->
+        <template v-else>
+          <view class="progress-bar">
+            <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+          </view>
+          <view class="progress-steps">
+            <view v-for="(step, index) in steps" :key="index" class="step-item"
+              :class="{ active: index <= currentIndex }">
+              <view class="step-dot"></view>
+              <text class="step-label">{{ step.label }}</text>
+            </view>
+          </view>
+        </template>
       </view>
 
       <!-- 工单信息卡片 -->
@@ -174,22 +187,52 @@ const handlerComments = computed(() => {
 
 // 进度步骤
 const steps = [
-  { key: TicketStatus.WAIT_ASSIGN, label: '等待处理' },
+  { key: TicketStatus.WAIT_ASSIGN, label: '待处理' },
   { key: TicketStatus.PROCESSING, label: '处理中' },
   { key: TicketStatus.COMPLETED, label: '已完成' },
-  { key: TicketStatus.CLOSED, label: '已关闭' },
 ];
 
 // 当前状态索引
 const currentIndex = computed(() => {
   if (!ticket.value) return -1;
+
+  // 如果工单已关闭，返回关闭前的状态
+  if (ticket.value.status === TicketStatus.CLOSED) {
+    // 从状态历史中找到关闭前的状态
+    const lastHistory = ticket.value.statusHistory?.find(
+      h => h.toStatus === TicketStatus.CLOSED
+    );
+    if (lastHistory?.fromStatus) {
+      return steps.findIndex(s => s.key === lastHistory.fromStatus);
+    }
+    // 如果没有历史记录，默认显示为"待处理"
+    return 0;
+  }
+
   return steps.findIndex(s => s.key === ticket.value?.status);
 });
 
 // 进度百分比
 const progressPercent = computed(() => {
   if (currentIndex.value < 0) return 0;
+
+  // 如果工单已关闭，进度条保持灰色
+  if (ticket.value?.status === TicketStatus.CLOSED) {
+    return 0;
+  }
+
   return (currentIndex.value / (steps.length - 1)) * 100;
+});
+
+// 获取关闭原因
+const closeReason = computed(() => {
+  if (ticket.value?.status !== TicketStatus.CLOSED) return null;
+
+  const closeHistory = ticket.value.statusHistory?.find(
+    h => h.toStatus === TicketStatus.CLOSED
+  );
+
+  return closeHistory?.remark || '工单已关闭';
 });
 
 /**
@@ -274,7 +317,7 @@ async function closeTicket() {
  */
 function getStatusText(status: TicketStatus): string {
   const statusMap: Record<string, string> = {
-    WAIT_ASSIGN: '等待处理',
+    WAIT_ASSIGN: '待处理',
     PROCESSING: '处理中',
     COMPLETED: '已完成',
     CLOSED: '已关闭',
@@ -397,6 +440,10 @@ onLoad((options) => {
   color: #FFFFFF;
 }
 
+.ticket-number-card.closed {
+  background: #8E8E93;
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -493,6 +540,50 @@ onLoad((options) => {
 .step-item.active .step-label {
   color: #FFFFFF;
   font-weight: 600;
+}
+
+/* 关闭提示 */
+.close-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 24rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16rpx;
+  margin-top: 16rpx;
+}
+
+.close-notice-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.9);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.close-notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  flex: 1;
+}
+
+.close-notice-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.close-notice-reason {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
 }
 
 /* 信息行 */

@@ -67,7 +67,9 @@ export const TicketListPage = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [closeModalVisible, setCloseModalVisible] = useState(false);
   const [assignForm] = Form.useForm();
+  const [closeForm] = Form.useForm();
 
   // 获取工单列表
   const { result, query } = useList({
@@ -260,11 +262,14 @@ export const TicketListPage = () => {
       render: (deadlineAt: string | null, record: any) => {
         if (!deadlineAt) return '-';
 
+        // 已完成或已关闭的工单不显示截止时间
+        if (record.status === 'COMPLETED' || record.status === 'CLOSED') {
+          return '-';
+        }
+
         const now = new Date();
         const deadline = new Date(deadlineAt);
-        const isOverdue = now > deadline &&
-                          record.status !== 'COMPLETED' &&
-                          record.status !== 'CLOSED';
+        const isOverdue = now > deadline;
 
         if (isOverdue) {
           return <Tag color="red">已超时</Tag>;
@@ -420,19 +425,27 @@ export const TicketListPage = () => {
     }
   };
 
+  // 打开关闭工单弹窗
+  const handleOpenCloseModal = () => {
+    setCloseModalVisible(true);
+  };
+
   // 关闭工单
   const handleClose = async () => {
     try {
+      const values = await closeForm.validateFields();
       await update(
         {
           resource: "ticket",
           id: currentTicketId || "",
           meta: { method: "close" },
-          values: { reason: "" },
+          values: { data: { reason: values.reason } },
         },
         {
           onSuccess: () => {
             message.success("工单已关闭");
+            setCloseModalVisible(false);
+            closeForm.resetFields();
             detailQuery.refetch();
             query.refetch();
           },
@@ -656,7 +669,7 @@ export const TicketListPage = () => {
                 </Button>
               )}
               {ticket.status !== "CLOSED" && (
-                <Button danger onClick={handleClose}>
+                <Button danger onClick={handleOpenCloseModal}>
                   关闭工单
                 </Button>
               )}
@@ -705,7 +718,7 @@ export const TicketListPage = () => {
               <Descriptions.Item label="创建时间" span={2}>
                 {new Date(ticket.createdAt).toLocaleString("zh-CN")}
               </Descriptions.Item>
-              {ticket.deadlineAt && (
+              {ticket.deadlineAt && ticket.status !== 'COMPLETED' && ticket.status !== 'CLOSED' && (
                 <Descriptions.Item label="截止时间" span={2}>
                   {new Date(ticket.deadlineAt).toLocaleString("zh-CN")}
                 </Descriptions.Item>
@@ -835,6 +848,28 @@ export const TicketListPage = () => {
               共 {handlerOptions.length} 位办事员可选
             </div>
           )}
+        </Form>
+      </Modal>
+
+      {/* 关闭工单弹窗 */}
+      <Modal
+        title="关闭工单"
+        open={closeModalVisible}
+        onOk={handleClose}
+        onCancel={() => {
+          setCloseModalVisible(false);
+          closeForm.resetFields();
+        }}
+        okText="确认关闭"
+        cancelText="取消"
+      >
+        <Form form={closeForm} layout="vertical">
+          <Form.Item name="reason" label="关闭原因">
+            <Input.TextArea
+              placeholder="请输入关闭原因（可选）"
+              rows={4}
+            />
+          </Form.Item>
         </Form>
       </Modal>
     </div>

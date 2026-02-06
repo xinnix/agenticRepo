@@ -35,13 +35,16 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const steps: Step[] = [
-  { key: TicketStatus.WAIT_ASSIGN, label: '等待处理' },
+  { key: TicketStatus.WAIT_ASSIGN, label: '待处理' },
   { key: TicketStatus.PROCESSING, label: '处理中' },
   { key: TicketStatus.COMPLETED, label: '已完成' },
-  { key: TicketStatus.CLOSED, label: '已关闭' },
 ];
 
 const currentIndex = computed(() => {
+  // 如果工单已关闭，不显示任何步骤为激活状态
+  if (props.currentStatus === TicketStatus.CLOSED) {
+    return -1;
+  }
   return steps.findIndex(s => s.key === props.currentStatus);
 });
 </script>

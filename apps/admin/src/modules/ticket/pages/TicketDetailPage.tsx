@@ -223,7 +223,7 @@ export const TicketDetailPage = () => {
           resource: "ticket",
           id,
           meta: { method: "close" },
-          values: { reason: values.reason },
+          values: { data: { reason: values.reason } },
         },
         {
           onSuccess: () => {
