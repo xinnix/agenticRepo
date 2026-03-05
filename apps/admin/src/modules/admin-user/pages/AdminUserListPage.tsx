@@ -150,7 +150,7 @@ export const AdminUserListPage = () => {
         create(
           {
             resource: "user",
-            values: values,
+            values: { data: values },
             meta: {
               method: "createAdminUser",
             },
@@ -204,15 +204,6 @@ export const AdminUserListPage = () => {
           </div>
         </Space>
       ),
-    },
-    {
-      title: "姓名",
-      key: "name",
-      width: 120,
-      render: (_: any, record: AdminUser) => {
-        const fullName = [record.firstName, record.lastName].filter(Boolean).join(" ");
-        return fullName || "-";
-      },
     },
     {
       title: "角色",
@@ -452,12 +443,6 @@ export const AdminUserListPage = () => {
                 <Input.Password placeholder="请输入密码" />
               </Form.Item>
             )}
-            <Form.Item name="firstName" label="名">
-              <Input placeholder="请输入名" />
-            </Form.Item>
-            <Form.Item name="lastName" label="姓">
-              <Input placeholder="请输入姓" />
-            </Form.Item>
           </Form>
         </Modal>
 

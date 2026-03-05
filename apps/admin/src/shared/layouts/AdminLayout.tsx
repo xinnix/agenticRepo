@@ -169,19 +169,29 @@ export const AdminLayout: React.FC = () => {
   }, [logout, navigate]);
 
   // User menu items - must be before early returns
-  const userMenuItems: MenuProps['items'] = useMemo(() => [
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: '退出登录',
-      onClick: handleLogout,
-    },
-  ], [handleLogout]);
+  const userMenuItems: MenuProps["items"] = useMemo(
+    () => [
+      {
+        key: "logout",
+        icon: <LogoutOutlined />,
+        label: "退出登录",
+        onClick: handleLogout,
+      },
+    ],
+    [handleLogout],
+  );
 
   // Show loading while checking auth
   if (isLoading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -195,9 +205,7 @@ export const AdminLayout: React.FC = () => {
   return (
     <Layout className="admin-layout">
       <Sider theme="dark" className="admin-sider">
-        <div className="admin-logo">
-          Admin Panel
-        </div>
+        <div className="admin-logo">西音码上办</div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -208,9 +216,9 @@ export const AdminLayout: React.FC = () => {
       </Sider>
       <Layout>
         <Header className="admin-header">
-          <div className="admin-header-title">管理系统</div>
+          <div className="admin-header-title">管理平台</div>
           <Space>
-            <span className="admin-username">{user?.username || '用户'}</span>
+            <span className="admin-username">{user?.username || "用户"}</span>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Avatar
                 src={user?.avatar}
