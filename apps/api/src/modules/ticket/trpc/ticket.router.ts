@@ -953,12 +953,12 @@ export const ticketRouter = router({
 /**
  * 状态流转规则
  */
-const TICKET_STATE_TRANSITIONS = {
+const TICKET_STATE_TRANSITIONS: Record<string, TicketStatus[]> = {
   WAIT_ASSIGN: ['PROCESSING', 'CLOSED'], // 可以直接进入处理中或关闭
   PROCESSING: ['COMPLETED', 'WAIT_ASSIGN', 'CLOSED'],
   COMPLETED: ['CLOSED'],
   CLOSED: [],
-} as const;
+};
 
 /**
  * 检查状态流转是否合法

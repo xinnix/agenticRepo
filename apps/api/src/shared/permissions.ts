@@ -30,7 +30,7 @@ export interface ExtendedUser extends User {
 /**
  * 检查用户是否是超级管理员
  */
-export function isSuperAdmin(user: User | null): boolean {
+export function isSuperAdmin(user: ExtendedUser | null): boolean {
   if (!user) return false;
   return user.roles.some((r: any) => r.role.slug === ROLES.SUPER_ADMIN);
 }
@@ -38,7 +38,7 @@ export function isSuperAdmin(user: User | null): boolean {
 /**
  * 检查用户是否是部门管理员
  */
-export function isDepartmentAdmin(user: User | null): boolean {
+export function isDepartmentAdmin(user: ExtendedUser | null): boolean {
   if (!user) return false;
   return user.roles.some((r: any) => r.role.slug === ROLES.DEPARTMENT_ADMIN);
 }
@@ -46,7 +46,7 @@ export function isDepartmentAdmin(user: User | null): boolean {
 /**
  * 检查用户是否是办事员
  */
-export function isHandler(user: User | null): boolean {
+export function isHandler(user: ExtendedUser | null): boolean {
   if (!user) return false;
   return user.roles.some((r: any) => r.role.slug === ROLES.HANDLER);
 }
@@ -54,7 +54,7 @@ export function isHandler(user: User | null): boolean {
 /**
  * 检查用户是否是普通用户
  */
-export function isNormalUser(user: User | null): boolean {
+export function isNormalUser(user: ExtendedUser | null): boolean {
   if (!user) return false;
   return user.roles.some((r: any) => r.role.slug === ROLES.USER);
 }
@@ -62,7 +62,7 @@ export function isNormalUser(user: User | null): boolean {
 /**
  * 获取用户的最小角色 level（数字越小权限越高）
  */
-export function getUserRoleLevel(user: User | null): number {
+export function getUserRoleLevel(user: ExtendedUser | null): number {
   if (!user || !user.roles || user.roles.length === 0) {
     return 999;
   }
@@ -76,29 +76,29 @@ export function getUserRoleLevel(user: User | null): number {
 /**
  * 检查用户是否有指定权限
  */
-export function hasPermission(user: User | null, permission: string): boolean {
+export function hasPermission(user: ExtendedUser | null, permission: string): boolean {
   if (!user) return false;
   // 超级管理员拥有所有权限
   if (isSuperAdmin(user)) return true;
-  return user.permissions.includes(permission);
+  return user.permissions?.includes(permission) || false;
 }
 
 /**
  * 检查用户是否有任一权限
  */
-export function hasAnyPermission(user: User | null, permissions: string[]): boolean {
+export function hasAnyPermission(user: ExtendedUser | null, permissions: string[]): boolean {
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
-  return permissions.some(p => user.permissions.includes(p));
+  return permissions.some(p => user.permissions?.includes(p) || false);
 }
 
 /**
  * 检查用户是否有所有权限
  */
-export function hasAllPermissions(user: User | null, permissions: string[]): boolean {
+export function hasAllPermissions(user: ExtendedUser | null, permissions: string[]): boolean {
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
-  return permissions.every(p => user.permissions.includes(p));
+  return permissions.every(p => user.permissions?.includes(p) || false);
 }
 
 // ============================================
@@ -111,7 +111,7 @@ export function hasAllPermissions(user: User | null, permissions: string[]): boo
  * - 部门管理员只能访问自己的部门
  * - 办事员和普通用户只能访问自己的部门
  */
-export function canAccessDepartment(user: User | null, departmentId: string): boolean {
+export function canAccessDepartment(user: ExtendedUser | null, departmentId: string): boolean {
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
   return user.departmentId === departmentId;
@@ -122,7 +122,7 @@ export function canAccessDepartment(user: User | null, departmentId: string): bo
  * - 超级管理员返回 null（无限制）
  * - 其他角色返回自己的部门 ID
  */
-export function getAccessibleDepartmentIds(user: User | null): string[] | null {
+export function getAccessibleDepartmentIds(user: ExtendedUser | null): string[] | null {
   if (!user) return [];
   if (isSuperAdmin(user)) return null; // null 表示无限制
   if (user.departmentId) return [user.departmentId];
@@ -141,7 +141,7 @@ export function getAccessibleDepartmentIds(user: User | null): string[] | null {
  * - 办事员可以访问分配给自己的工单和本部门工单
  * - 普通用户只能访问自己创建的工单
  */
-export function canAccessTicket(user: User | null, ticket: Ticket): boolean {
+export function canAccessTicket(user: ExtendedUser | null, ticket: Ticket): boolean {
   if (!user) return false;
 
   // 超级管理员可以访问所有工单
@@ -173,7 +173,7 @@ export function canAccessTicket(user: User | null, ticket: Ticket): boolean {
  * 获取工单查询过滤条件
  * 根据用户角色返回相应的 where 条件
  */
-export function getTicketFilterForUser(user: User | null): Record<string, any> | null {
+export function getTicketFilterForUser(user: ExtendedUser | null): Record<string, any> | null {
   if (!user) return { id: 'non-existent-id' }; // 返回空条件
 
   // 超级管理员无限制
@@ -213,7 +213,7 @@ export function getTicketFilterForUser(user: User | null): Record<string, any> |
  * - 超级管理员可以管理所有用户
  * - 部门管理员可以管理本部门用户
  */
-export function canManageUser(user: User | null, targetUserId: string, targetUserDepartmentId: string | null): boolean {
+export function canManageUser(user: ExtendedUser | null, targetUserId: string, targetUserDepartmentId: string | null): boolean {
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
   if (isDepartmentAdmin(user) && user.departmentId) {
@@ -225,7 +225,7 @@ export function canManageUser(user: User | null, targetUserId: string, targetUse
 /**
  * 获取用户查询过滤条件
  */
-export function getUserFilterForUser(user: User | null): Record<string, any> | null {
+export function getUserFilterForUser(user: ExtendedUser | null): Record<string, any> | null {
   if (!user) return { id: 'non-existent-id' };
   if (isSuperAdmin(user)) return null;
   if (isDepartmentAdmin(user) && user.departmentId) {
@@ -241,7 +241,7 @@ export function getUserFilterForUser(user: User | null): Record<string, any> | n
 /**
  * 获取统计查询的部门过滤
  */
-export function getStatisticsFilterForUser(user: User | null): { departmentId?: string } | null {
+export function getStatisticsFilterForUser(user: ExtendedUser | null): { departmentId?: string } | null {
   if (!user) return { departmentId: 'non-existent-id' };
   if (isSuperAdmin(user)) return null;
   if (user.departmentId) return { departmentId: user.departmentId };
