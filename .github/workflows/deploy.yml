@@ -70,8 +70,8 @@ jobs:
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:buildcache,mode=max
           target: production
 
       - name: 🔨 Build and push Admin image
@@ -82,8 +82,8 @@ jobs:
           push: true
           tags: ${{ steps.meta-admin.outputs.tags }}
           labels: ${{ steps.meta-admin.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_ADMIN }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_ADMIN }}:buildcache,mode=max
           target: production
 
       - name: 📝 Create deployment summary
