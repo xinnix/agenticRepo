@@ -49,15 +49,15 @@ function App() {
               authProvider={authProvider}
               options={{
                 reactQuery: {
-                  client: queryClient,
+                  clientConfig: queryClient,
                 },
                 notification: {
-                  success: (msg) => {
+                  success: (msg: unknown) => {
                     if (typeof msg === "string") {
                       message.success(msg);
                     }
                   },
-                  error: (msg) => {
+                  error: (msg: unknown) => {
                     const errorMsg = typeof msg === "string" ? msg : "操作失败";
                     message.error(errorMsg);
                   },

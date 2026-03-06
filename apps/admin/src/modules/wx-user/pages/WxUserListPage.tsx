@@ -26,6 +26,13 @@ import {
   WechatOutlined,
 } from "@ant-design/icons";
 
+interface Role {
+  id: string;
+  name: string;
+  slug: string;
+  level: number;
+}
+
 interface WxUser {
   id: string;
   username: string;
@@ -56,6 +63,7 @@ interface AuditApplicationModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   onApprove: (user: WxUser, departmentId: string) => void;
+  onReject: () => void;  // 新增：拒绝回调
 }
 
 interface DepartmentNode {
@@ -72,6 +80,7 @@ const AuditApplicationModal = ({
   onCancel,
   onSuccess,
   onApprove,
+  onReject,
 }: AuditApplicationModalProps) => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -88,29 +97,9 @@ const AuditApplicationModal = ({
   };
 
   const handleReject = async () => {
-    if (!user) return;
     try {
       setSubmitting(true);
-      update(
-        {
-          resource: "user",
-          id: user.id,
-          values: {},
-          meta: {
-            method: "rejectHandler",
-          },
-        },
-        {
-          onSuccess: () => {
-            message.success("已拒绝申请");
-            onCancel();
-            query.refetch();
-          },
-          onError: () => {
-            message.error("操作失败");
-          },
-        }
-      );
+      await onReject();  // 调用传入的拒绝回调
     } finally {
       setSubmitting(false);
     }
@@ -317,6 +306,32 @@ export const WxUserListPage = () => {
       {
         onSuccess: () => {
           message.success("已批准成为办事员，并分配部门");
+          setIsAuditModalVisible(false);
+          setSelectedUser(null);
+          query.refetch();
+        },
+        onError: () => {
+          message.error("操作失败");
+        },
+      }
+    );
+  };
+
+  const handleReject = () => {
+    if (!selectedUser) return;
+
+    update(
+      {
+        resource: "user",
+        id: selectedUser.id,
+        values: {},
+        meta: {
+          method: "rejectHandler",
+        },
+      },
+      {
+        onSuccess: () => {
+          message.success("已拒绝申请");
           setIsAuditModalVisible(false);
           setSelectedUser(null);
           query.refetch();
@@ -549,6 +564,7 @@ export const WxUserListPage = () => {
             query.refetch();
           }}
           onApprove={handleApprove}
+          onReject={handleReject}
         />
       </List>
     </div>
