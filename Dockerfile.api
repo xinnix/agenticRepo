@@ -67,7 +67,7 @@ RUN chmod +x ./apps/api/entrypoint.sh
 # Copy built files
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/infra/database/generated ./infra/database/generated
-COPY --from=builder /app/infra/shared/dist ./infra/shared/dist
+COPY --from=builder /app/infra/shared/src ./infra/shared/src
 COPY --from=builder /app/infra/database/prisma ./infra/database/prisma
 
 # Expose port
