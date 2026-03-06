@@ -31,8 +31,12 @@ FROM base AS builder
 WORKDIR /app
 COPY . .
 
-# Build admin (shared package doesn't need compilation)
-RUN pnpm --filter @opencode/admin build
+# Change to admin directory and build
+WORKDIR /app/apps/admin
+RUN pnpm build
+
+# Change back to root for next stage
+WORKDIR /app
 
 # Stage 4: Production (Nginx)
 FROM nginx:alpine AS production
