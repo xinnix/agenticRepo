@@ -4,10 +4,10 @@
  */
 
 import { PERMISSIONS, ROLES } from '@opencode/shared';
-import type { User, Ticket } from '@opencode/database';
+import type { User as PrismaUser, Ticket } from '@opencode/database';
 
 // Extended User type with roles and permissions loaded from database
-export interface ExtendedUser extends User {
+export type ExtendedUser = PrismaUser & {
   roles: Array<{
     role: {
       slug: string;
@@ -21,7 +21,7 @@ export interface ExtendedUser extends User {
     };
   }>;
   permissions?: string[];
-}
+};
 
 // ============================================
 // 角色检查函数
