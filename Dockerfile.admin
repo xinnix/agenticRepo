@@ -20,9 +20,6 @@ FROM base AS development
 WORKDIR /app
 COPY . .
 
-# Build shared package for type checking
-RUN pnpm --filter @opencode/shared build
-
 # Expose port
 EXPOSE 5173
 
@@ -34,10 +31,7 @@ FROM base AS builder
 WORKDIR /app
 COPY . .
 
-# Build shared package
-RUN pnpm --filter @opencode/shared build
-
-# Build admin
+# Build admin (shared package doesn't need compilation)
 RUN pnpm --filter @opencode/admin build
 
 # Stage 4: Production (Nginx)
