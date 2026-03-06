@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Admin (React + Vite + Refine)
 
 # Stage 1: Base - Dependencies
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 WORKDIR /app
 
 # Install pnpm
@@ -10,10 +10,10 @@ RUN npm install -g pnpm@10.12.4
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/admin/package.json ./apps/admin/
-COPY packages/shared/package.json ./packages/shared/
+COPY infra/shared/package.json ./infra/shared/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with pnpm cache mount
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Stage 2: Development
 FROM base AS development
@@ -21,7 +21,7 @@ WORKDIR /app
 COPY . .
 
 # Build shared package for type checking
-RUN pnpm -C packages/shared build
+RUN pnpm --filter @opencode/shared build
 
 # Expose port
 EXPOSE 5173
@@ -35,10 +35,10 @@ WORKDIR /app
 COPY . .
 
 # Build shared package
-RUN pnpm -C packages/shared build
+RUN pnpm --filter @opencode/shared build
 
 # Build admin
-RUN pnpm -C apps/admin build
+RUN pnpm --filter @opencode/admin build
 
 # Stage 4: Production (Nginx)
 FROM nginx:alpine AS production

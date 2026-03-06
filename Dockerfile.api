@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for API (NestJS + tRPC + Prisma)
 
 # Stage 1: Base - Dependencies
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 WORKDIR /app
 
 # Install pnpm
@@ -10,11 +10,11 @@ RUN npm install -g pnpm@10.12.4
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
-COPY packages/database/package.json ./packages/database/
-COPY packages/shared/package.json ./packages/shared/
+COPY infra/database/package.json ./infra/database/
+COPY infra/shared/package.json ./infra/shared/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with pnpm cache mount
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Stage 2: Development
 FROM base AS development
@@ -22,12 +22,15 @@ WORKDIR /app
 COPY . .
 
 # Generate Prisma client
-RUN pnpm -C packages/database prisma generate
+RUN pnpm --filter @opencode/database prisma generate
+
+# Install all dependencies with hoisting for better compatibility
+RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 # Expose port
 EXPOSE 3000
 
-# Start development server
+# Start development server using workspace script
 CMD ["pnpm", "dev:api"]
 
 # Stage 3: Build
@@ -36,16 +39,16 @@ WORKDIR /app
 COPY . .
 
 # Build shared package
-RUN pnpm -C packages/shared build
+RUN pnpm --filter @opencode/shared build
 
 # Generate Prisma client
-RUN pnpm -C packages/database prisma generate
+RUN pnpm --filter @opencode/database prisma generate
 
 # Build API
-RUN pnpm -C apps/api build
+RUN pnpm --filter @opencode/api build
 
 # Stage 4: Production
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 WORKDIR /app
 
 # Install pnpm
@@ -54,20 +57,24 @@ RUN npm install -g pnpm@10.12.4
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
-COPY packages/database/package.json ./packages/database/
-COPY packages/shared/package.json ./packages/shared/
+COPY infra/database/package.json ./infra/database/
+COPY infra/shared/package.json ./infra/shared/
 
-# Install production dependencies only
-RUN pnpm install --prod --frozen-lockfile
+# Install production dependencies only with cache
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+
+# Copy entrypoint script
+COPY apps/api/entrypoint.sh ./apps/api/entrypoint.sh
+RUN chmod +x ./apps/api/entrypoint.sh
 
 # Copy built files
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/packages/database/generated ./packages/database/generated
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+COPY --from=builder /app/infra/database/generated ./infra/database/generated
+COPY --from=builder /app/infra/shared/dist ./infra/shared/dist
+COPY --from=builder /app/infra/database/prisma ./infra/database/prisma
 
 # Expose port
 EXPOSE 3000
 
-# Start production server
-CMD ["node", "apps/api/dist/main.js"]
+# Set entrypoint to run migrations before starting
+ENTRYPOINT ["./apps/api/entrypoint.sh"]
