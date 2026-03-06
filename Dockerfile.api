@@ -38,11 +38,8 @@ FROM base AS builder
 WORKDIR /app
 COPY . .
 
-# Build shared package
-RUN pnpm --filter @opencode/shared build
-
-# Generate Prisma client
-RUN pnpm --filter @opencode/database prisma generate
+# Generate Prisma client first (required for TypeScript compilation)
+RUN cd infra/database && npx prisma generate
 
 # Build API
 RUN pnpm --filter @opencode/api build
