@@ -87,8 +87,8 @@ jobs:
           tags: ${{ steps.meta-admin.outputs.tags }}
           labels: ${{ steps.meta-admin.outputs.labels }}
           target: production
-          build-args:
-            VITE_API_URL: ${{ secrets.VITE_API_URL || env.VITE_API_URL }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL || env.VITE_API_URL }}
 
       - name: 📝 Create deployment summary
         run: |
