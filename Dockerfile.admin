@@ -20,6 +20,9 @@ FROM base AS development
 WORKDIR /app
 COPY . .
 
+# Install all dependencies with hoisting
+RUN pnpm install --frozen-lockfile --shamefully-hoist
+
 # Expose port
 EXPOSE 5173
 

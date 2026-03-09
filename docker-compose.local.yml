@@ -1,0 +1,34 @@
+# Docker Compose for Local Production
+# 使用本地构建的镜像进行测试
+#
+# 注意：此配置不包含 PostgreSQL，需要连接外部数据库
+# 请在 .env.prod 中配置 DATABASE_URL
+
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: xinnix2000/feedbackhub-api:v1-local
+    container_name: feedbackhub-api-local
+    ports:
+      - "3000:3000"
+    env_file:
+      - 1panel.env
+    restart: unless-stopped
+
+  admin:
+    image: xinnix2000/feedbackhub-admin:v1-local
+    container_name: feedbackhub-admin-local
+    ports:
+      - "8080:80"
+    env_file:
+      - 1panel.env
+    environment:
+      # 前端环境变量（构建时注入）
+      VITE_API_URL: http://localhost:3000/trpc
+    depends_on:
+      - api
+    restart: unless-stopped

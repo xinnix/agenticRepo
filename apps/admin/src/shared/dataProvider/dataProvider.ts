@@ -79,7 +79,7 @@ function handleTRPCError(error: unknown) {
 export const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
     httpLink({
-      url: "http://localhost:3000/trpc",
+      url: import.meta.env.VITE_API_URL || "http://localhost:3000/trpc",
       headers: () => {
         const token = localStorage.getItem("accessToken");
         return {
@@ -291,5 +291,5 @@ export const dataProvider = {
   /**
    * Get the API URL
    */
-  getApiUrl: () => "http://localhost:3000/trpc",
+  getApiUrl: () => import.meta.env.VITE_API_URL || "http://localhost:3000/trpc",
 };

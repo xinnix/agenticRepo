@@ -1,77 +1,93 @@
 # Multi-stage Dockerfile for API (NestJS + tRPC + Prisma)
+# 使用 pnpm deploy 解决 Monorepo 软链接问题
 
-# Stage 1: Base - Dependencies
+# --- Stage 1: Base (环境准备) ---
 FROM node:22-alpine AS base
+# 启用 corepack 以使用项目指定的 pnpm 版本
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@10.12.4
-
-# Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# --- Stage 2: Dependencies (依赖安装) ---
+FROM base AS deps
+# 仅复制配置文件，利用 Docker 缓存层
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY infra/database/package.json ./infra/database/
 COPY infra/shared/package.json ./infra/shared/
 
-# Install dependencies with pnpm cache mount
+# 使用挂载缓存安装依赖，极大提升二次构建速度
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-# Stage 2: Development
-FROM base AS development
-WORKDIR /app
+# --- Stage 3: Builder (源码编译) ---
+FROM deps AS builder
 COPY . .
 
-# Generate Prisma client
+# 1. 生成 Prisma Client (必须在编译前，否则 TS 找不到类型)
 RUN pnpm --filter @opencode/database prisma generate
 
-# Install all dependencies with hoisting for better compatibility
-RUN pnpm install --frozen-lockfile --shamefully-hoist
+# 2. 编译 shared 包（API 依赖于 shared 的编译产物）
+RUN pnpm --filter @opencode/shared build
 
-# Expose port
-EXPOSE 3000
-
-# Start development server using workspace script
-CMD ["pnpm", "dev:api"]
-
-# Stage 3: Build
-FROM base AS builder
-WORKDIR /app
-COPY . .
-
-# Generate Prisma client first (required for TypeScript compilation)
-RUN cd infra/database && npx prisma generate
-
-# Build API
+# 3. 编译 API 项目
 RUN pnpm --filter @opencode/api build
 
-# Stage 4: Production
-FROM node:22-alpine AS production
+# --- Stage 4: Deployer (生产环境提取) ---
+FROM node:22-alpine AS deployer
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@10.12.4
+# 启用 corepack
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
-# Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/api/package.json ./apps/api/
-COPY infra/database/package.json ./infra/database/
-COPY infra/shared/package.json ./infra/shared/
+# 复制整个 workspace 结构（pnpm deploy 需要完整的环境）
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder /app/package.json ./package.json
 
-# Install production dependencies only with cache
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# 复制所有包的 package.json（依赖分析需要）
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/infra/database/package.json ./infra/database/package.json
+COPY --from=builder /app/infra/shared/package.json ./infra/shared/package.json
 
-# Copy entrypoint script
-COPY apps/api/entrypoint.sh ./apps/api/entrypoint.sh
-RUN chmod +x ./apps/api/entrypoint.sh
+# 复制 node_modules 用于依赖解析
+COPY --from=builder /app/node_modules ./node_modules
 
-# Copy built files
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/infra/database/generated ./infra/database/generated
-COPY --from=builder /app/infra/shared/src ./infra/shared/src
-COPY --from=builder /app/infra/database/prisma ./infra/database/prisma
+# 在完整 workspace 环境中运行 pnpm deploy
+# 使用 --legacy 标志以确保正确处理 workspace 依赖
+# 不使用 --prod 标志，确保包含运行时必需的 peer dependencies（如 express）
+# 这会分析 @opencode/api 的所有依赖（包括 workspace 依赖）
+# 并创建一个包含所有必要生产依赖的独立目录
+RUN pnpm deploy --filter @opencode/api --legacy /out
 
-# Expose port
+# --- Stage 5: Runner (最终运行镜像) ---
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+# 1. 从 deployer 阶段拷贝 pnpm deploy 的输出（包含 node_modules 和配置文件）
+# pnpm deploy 会将整个包的内容输出到指定目录，但不包含编译产物和 workspace 源文件
+COPY --from=deployer /out/package.json ./package.json
+COPY --from=deployer /out/node_modules ./node_modules
+
+# 2. 从 builder 阶段拷贝编译后的产物（pnpm deploy 不会包含编译文件）
+COPY --from=builder /app/apps/api/dist ./dist
+
+# 3. 手动补充 @opencode/database 包的缺失文件
+# pnpm deploy 不会复制 workspace 包的源文件和编译产物
+COPY --from=builder /app/infra/database/index.cjs ./node_modules/@opencode/database/index.cjs
+COPY --from=builder /app/infra/database/index.d.ts ./node_modules/@opencode/database/index.d.ts
+COPY --from=builder /app/infra/database/prisma ./node_modules/@opencode/database/prisma
+COPY --from=builder /app/infra/database/prisma.config.ts ./node_modules/@opencode/database/prisma.config.ts
+COPY --from=builder /app/infra/database/generated ./node_modules/@opencode/database/generated
+
+# 4. 手动补充 @opencode/shared 包的编译产物
+# API 运行时需要 shared 的编译产物
+COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
+
+# 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
+COPY --from=builder /app/infra/database ./infra/database
+
+# 6. 拷贝启动脚本
+COPY apps/api/entrypoint-simple.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 EXPOSE 3000
-
-# Set entrypoint to run migrations before starting
-ENTRYPOINT ["./apps/api/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]

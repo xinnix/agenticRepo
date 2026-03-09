@@ -15,6 +15,7 @@ out/
 .env
 .env.local
 .env.*.local
+.env.prod
 
 # Prisma
 infra/database/generated/
@@ -47,6 +48,9 @@ coverage/
 # Misc
 .cache/
 .temp/
+
+# Database backups
+backups/
 
 # File uploads
 uploads/

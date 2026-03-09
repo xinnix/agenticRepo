@@ -1,15 +1,19 @@
 # Docker Compose for Production
 # Usage: docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
-# 注意：此配置不包含 PostgreSQL，需要连接外部数据库
-# 请在 .env.prod 中配置 DATABASE_URL
+# 生产环境部署配置
+# - 连接外部 PostgreSQL 数据库
+# - 包含健康检查和自动重启
+# - 日志和资源限制配置
 
 version: "3.8"
 
 services:
   api:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-your-username/feedbackhub}-api:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-feedbackhub}-api:${TAG:-latest}
     container_name: feedbackhub-api-prod
+    env_file:
+      - 1panel.env
     environment:
       # 数据库配置（连接外部数据库）
       DATABASE_URL: ${DATABASE_URL}
@@ -40,16 +44,34 @@ services:
     restart: unless-stopped
     networks:
       - feedbackhub-network
+    # 健康检查
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   admin:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-your-username/feedbackhub}-admin:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-feedbackhub}-admin:${TAG:-latest}
     container_name: feedbackhub-admin-prod
+    env_file:
+      - 1panel.env
     environment:
       # 前端环境变量（构建时注入）
       VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/trpc}
@@ -61,6 +83,28 @@ services:
     restart: unless-stopped
     networks:
       - feedbackhub-network
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
 networks:
   feedbackhub-network:
