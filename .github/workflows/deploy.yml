@@ -75,7 +75,6 @@ jobs:
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
-          target: production
 
       - name: 🔨 Build and push Admin image
         uses: docker/build-push-action@v5
