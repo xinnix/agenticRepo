@@ -1,7 +1,8 @@
 import type { AppRouter } from "../../types/api";
-import { createTRPCProxyClient, httpLink, TRPCClientError } from "@trpc/client";
+import { TRPCClientError } from "@trpc/client";
 import { QueryClient } from "@tanstack/react-query";
 import { message } from "antd";
+import { getTrpcClient } from "../trpc/trpcClient";
 
 // Create QueryClient for React Query
 export const queryClient = new QueryClient({
@@ -74,26 +75,8 @@ function handleTRPCError(error: unknown) {
   }
 }
 
-// Create a standalone tRPC client for data provider
-// Use httpLink for single requests instead of batch
-//
-// Environment Configuration:
-// - Development: Uses relative path `/trpc`, proxied by Vite to localhost:3000
-// - Production: Uses relative path `/trpc`, proxied by Nginx to api:3000
-// - See vite.config.ts (dev) and nginx.conf (prod) for proxy configuration
-export const trpcClient = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpLink({
-      url: import.meta.env.VITE_API_URL || "/trpc",
-      headers: () => {
-        const token = localStorage.getItem("accessToken");
-        return {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        };
-      },
-    }),
-  ],
-});
+// Get shared tRPC client and export for other modules
+export const trpcClient = getTrpcClient();
 
 /**
  * Custom tRPC data provider for Refine

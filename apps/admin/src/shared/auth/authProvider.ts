@@ -1,22 +1,8 @@
 import type { AuthProvider } from "@refinedev/core";
-import type { AppRouter } from "../../types/api";
-import { createTRPCProxyClient, httpLink } from "@trpc/client";
+import { getTrpcClient } from "../trpc/trpcClient";
 
-// Create tRPC client for auth provider
-// Use httpLink for single requests instead of batch
-const trpcClient = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpLink({
-      url: "http://localhost:3000/trpc",
-      headers: () => {
-        const token = localStorage.getItem("accessToken");
-        return {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        };
-      },
-    }),
-  ],
-});
+// Get shared tRPC client
+const trpcClient = getTrpcClient();
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
