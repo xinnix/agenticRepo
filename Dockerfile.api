@@ -23,7 +23,7 @@ FROM deps AS builder
 COPY . .
 
 # 1. 生成 Prisma Client (必须在编译前，否则 TS 找不到类型)
-RUN pnpm --filter @opencode/database prisma generate
+RUN cd infra/database && npx prisma generate
 
 # 2. 编译 shared 包（API 依赖于 shared 的编译产物）
 RUN pnpm --filter @opencode/shared build
