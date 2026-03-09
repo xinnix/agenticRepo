@@ -3,7 +3,8 @@
  * 提供 uni.request 的封装，支持拦截器、Token 管理和自动刷新
  */
 
-const BASE_URL = 'http://localhost:3000/api';
+// const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'https://feedback.classmaster.cn/api';
 
 interface RequestConfig {
   url: string;

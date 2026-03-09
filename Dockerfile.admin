@@ -34,6 +34,12 @@ FROM base AS builder
 WORKDIR /app
 COPY . .
 
+# Accept build-time arguments for Vite environment variables
+ARG VITE_API_URL=http://localhost:3000/trpc
+
+# Build argument to environment variable for Vite
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Change to admin directory and build
 WORKDIR /app/apps/admin
 RUN pnpm build
