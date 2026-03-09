@@ -76,10 +76,15 @@ function handleTRPCError(error: unknown) {
 
 // Create a standalone tRPC client for data provider
 // Use httpLink for single requests instead of batch
+//
+// Environment Configuration:
+// - Development: Uses relative path `/trpc`, proxied by Vite to localhost:3000
+// - Production: Uses relative path `/trpc`, proxied by Nginx to api:3000
+// - See vite.config.ts (dev) and nginx.conf (prod) for proxy configuration
 export const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
     httpLink({
-      url: import.meta.env.VITE_API_URL || "http://localhost:3000/trpc",
+      url: import.meta.env.VITE_API_URL || "/trpc",
       headers: () => {
         const token = localStorage.getItem("accessToken");
         return {
@@ -291,5 +296,5 @@ export const dataProvider = {
   /**
    * Get the API URL
    */
-  getApiUrl: () => import.meta.env.VITE_API_URL || "http://localhost:3000/trpc",
+  getApiUrl: () => import.meta.env.VITE_API_URL || "/trpc",
 };

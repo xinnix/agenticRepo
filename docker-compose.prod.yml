@@ -29,13 +29,6 @@ services:
   admin:
     image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-feedbackhub}-admin:${TAG:-latest}
     container_name: feedbackhub-admin-prod
-    env_file:
-      - 1panel.env
-    build:
-      context: .
-      dockerfile: Dockerfile.admin
-      args:
-        VITE_API_URL: ${VITE_API_URL:-/trpc}
     ports:
       - "${ADMIN_PORT:-80}:80"
     depends_on:
