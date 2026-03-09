@@ -11,7 +11,7 @@ on:
       - main
       - master
       - v1
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch: # 允许手动触发
 
 env:
   REGISTRY: ghcr.io
@@ -88,7 +88,7 @@ jobs:
           labels: ${{ steps.meta-admin.outputs.labels }}
           target: production
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL || env.VITE_API_URL }}
+            VITE_API_URL=${{ env.VITE_API_URL }}
 
       - name: 📝 Create deployment summary
         run: |
@@ -96,7 +96,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔧 Build Configuration" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**VITE_API_URL:** \`${{ secrets.VITE_API_URL || '/trpc' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**VITE_API_URL:** \`${{ env.VITE_API_URL }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> 💡 **提示**: 默认使用相对路径 \`/trpc\`。如需自定义，请在 GitHub Secrets 中添加 \`VITE_API_URL\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
