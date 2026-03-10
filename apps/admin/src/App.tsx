@@ -12,14 +12,8 @@ import { LoginPage, SessionExpiredPage, NotFoundPage } from "./modules/auth";
 import { AdminLayout } from "./shared/layouts";
 import { DashboardPage } from "./modules/dashboard";
 import { TodoListPage } from "./modules/todo";
-import { WxUserListPage } from "./modules/wx-user";
-import { AdminUserListPage } from "./modules/admin-user";
 import { RoleListPage, RoleDetailPage } from "./modules/role";
-import { CategoryListPage } from "./modules/category";
-import { TicketListPage, TicketDetailPage } from "./modules/ticket";
-import { DepartmentListPage } from "./modules/department";
-import { AreaListPage } from "./modules/area";
-import { HandlerListPage, HandlerDetailPage } from "./modules/handler";
+import { UserListPage, UserDetailPage } from "./modules/user";
 
 // Create QueryClient outside component to prevent re-creation
 const queryClient = new QueryClient({
@@ -65,40 +59,20 @@ function App() {
               }}
               resources={[
                 {
+                  name: "dashboard",
+                  list: "/dashboard",
+                },
+                {
                   name: "todo",
                   list: "/todo",
                 },
                 {
-                  name: "wx-user",
-                  list: "/wx-users",
-                },
-                {
-                  name: "admin-user",
-                  list: "/admin-users",
+                  name: "user",
+                  list: "/users",
                 },
                 {
                   name: "role",
                   list: "/roles",
-                },
-                {
-                  name: "category",
-                  list: "/categories",
-                },
-                {
-                  name: "ticket",
-                  list: "/tickets",
-                },
-                {
-                  name: "department",
-                  list: "/departments",
-                },
-                {
-                  name: "area",
-                  list: "/areas",
-                },
-                {
-                  name: "handler",
-                  list: "/handlers",
                 },
               ]}
             >
@@ -109,17 +83,10 @@ function App() {
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="todo" element={<TodoListPage />} />
-                  <Route path="wx-users" element={<WxUserListPage />} />
-                  <Route path="admin-users" element={<AdminUserListPage />} />
+                  <Route path="users" element={<UserListPage />} />
+                  <Route path="users/:id" element={<UserDetailPage />} />
                   <Route path="roles" element={<RoleListPage />} />
                   <Route path="roles/:id" element={<RoleDetailPage />} />
-                  <Route path="categories" element={<CategoryListPage />} />
-                  <Route path="tickets" element={<TicketListPage />} />
-                  <Route path="tickets/:id" element={<TicketDetailPage />} />
-                  <Route path="departments" element={<DepartmentListPage />} />
-                  <Route path="areas" element={<AreaListPage />} />
-                  <Route path="handlers" element={<HandlerListPage />} />
-                  <Route path="handlers/:id" element={<HandlerDetailPage />} />
                 </Route>
                 <Route path="/404" element={<NotFoundPage />} />
                 <Route path="*" element={<NotFoundPage />} />

@@ -1,7 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
-import { WxacodeService } from "../modules/area/services/wxacode.service";
 import jwt from "jsonwebtoken";
 
 // Global PrismaService reference
@@ -11,19 +10,11 @@ export const setPrismaService = (prisma: PrismaService) => {
   prismaServiceInstance = prisma;
 };
 
-// Global WxacodeService reference
-let wxacodeServiceInstance: WxacodeService | null = null;
-
-export const setWxacodeService = (service: WxacodeService) => {
-  wxacodeServiceInstance = service;
-};
-
 // User interface for context
 export interface User {
   id: string;
   email: string;
   username?: string;
-  departmentId?: string | null;
   permissions: string[];
   roles: any[];
 }
@@ -89,7 +80,6 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
       id: user.id,
       email: user.email,
       username: user.username,
-      departmentId: user.departmentId,
       permissions,
       roles: user.roles?.map((ur: any) => ur.role) || [],
     };
@@ -106,7 +96,6 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
 // Create context with optional user (from JWT verification)
 export const createContext = async (opts: any) => {
   const prisma = prismaServiceInstance || opts?.prisma;
-  const wxacodeService = wxacodeServiceInstance || opts?.wxacodeService;
   const req = opts?.req;
 
   // Verify JWT token and get user
@@ -117,7 +106,6 @@ export const createContext = async (opts: any) => {
 
   return {
     prisma,
-    wxacodeService,
     req,
     res: opts?.res,
     user,
@@ -169,18 +157,11 @@ export const permissionProcedure = (resource: string, action: string) =>
     const userPermissions: string[] = ctx.user?.permissions || [];
 
     // Import permission helpers
-    const { isSuperAdmin } = await import('../shared/permissions');
+    const { hasSuperAdminRole } = await import('../shared/permissions');
 
     // Super admin has all permissions
     // Note: ctx.user.roles is an array of Role objects (from verifyJwtToken)
     const hasSuperAdminRole = ctx.user?.roles?.some((r: any) => r?.slug === 'super_admin') || false;
-    // Handler role can approve handler applications
-    const hasHandlerRole = ctx.user?.roles?.some((r: any) => r?.slug === 'handler') || false;
-
-    // Special case: handler role can approve/reject handler applications
-    if (resource === 'user' && (action === 'update') && hasHandlerRole) {
-      return next();
-    }
 
     if (!hasSuperAdminRole && !userPermissions.includes(permissionString)) {
       throw new TRPCError({
@@ -192,42 +173,8 @@ export const permissionProcedure = (resource: string, action: string) =>
     return next();
   });
 
-// Department procedure - requires access to specific department
-// Usage: departmentProcedure('read', 'user') - checks user:read_department permission
-export const departmentProcedure = (resource: string, action: string, departmentIdField: string = 'departmentId') =>
-  protectedProcedure.use(async ({ ctx, next }) => {
-    const permissionString = `${resource}:${action}_department`;
-
-    // Import permission helpers
-    const { isSuperAdmin, canAccessDepartment } = await import('../shared/permissions');
-
-    // Check if user has department permission
-    const hasSuperAdminRole = ctx.user?.roles?.some((r: any) => r.role.slug === 'super_admin');
-    const hasPermission = ctx.user?.permissions?.includes(permissionString);
-
-    if (!hasSuperAdminRole && !hasPermission) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: `Missing permission: ${permissionString}`,
-      });
-    }
-
-    // If not super admin, check department access
-    if (!hasSuperAdminRole && ctx.user?.departmentId) {
-      // Department is verified in the handler using canAccessDepartment
-      return next({
-        ctx: {
-          ...ctx,
-          departmentCheck: true,
-        },
-      });
-    }
-
-    return next();
-  });
-
 // Export permission helpers for use in routers
-export { canAccessTicket, getTicketFilterForUser, getUserFilterForUser, getStatisticsFilterForUser } from '../shared/permissions';
+export { hasPermission, hasSuperAdminRole, hasAdminRole } from '../shared/permissions';
 
 // Re-export CRUD helpers from trpc.helper
 export {

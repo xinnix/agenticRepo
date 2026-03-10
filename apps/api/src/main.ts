@@ -18,11 +18,10 @@ import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
 // Debug: Check if JWT_SECRET is loaded
 console.log('[main.ts] JWT_SECRET from process.env:', process.env.JWT_SECRET?.substring(0, 20) + '...');
 console.log('[main.ts] PORT:', process.env.PORT);
-console.log('[main.ts] WX_APP_ID:', process.env.WX_APP_ID);
+
 import { PrismaService } from "./prisma/prisma.service";
-import { WxacodeService } from "./modules/area/services/wxacode.service";
 import { appRouter } from "./trpc/app.router";
-import { createContext, setPrismaService, setWxacodeService } from "./trpc/trpc";
+import { createContext, setPrismaService } from "./trpc/trpc";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
@@ -60,11 +59,8 @@ async function bootstrap() {
 
   // Set up tRPC middleware (tRPC handles body parsing internally)
   const prismaService = app.get(PrismaService);
-  const wxacodeService = app.get(WxacodeService);
   setPrismaService(prismaService); // 设置 PrismaService 实例
-  setWxacodeService(wxacodeService); // 设置 WxacodeService 实例
   console.log('DEBUG: PrismaService set in global:', !!prismaService);
-  console.log('DEBUG: WxacodeService set in global:', !!wxacodeService);
 
   (app as any).use(
     "/trpc",
@@ -83,6 +79,8 @@ async function bootstrap() {
     .setDescription("Full-stack monorepo with NestJS, tRPC, and Prisma")
     .setVersion("1.0")
     .addTag("todos", "Todo resource operations")
+    .addTag("users", "User resource operations")
+    .addTag("roles", "Role resource operations")
     .addBearerAuth()
     .build();
 

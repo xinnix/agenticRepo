@@ -7,99 +7,23 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================
-// 枚举类型
-// ============================================
-
-enum TicketStatus {
-  WAIT_ASSIGN // 等待处理（初始状态，可接单或派单）
-  PROCESSING // 处理中（已有处理人）
-  COMPLETED // 待评价
-  CLOSED // 已关闭
-}
-
-enum Priority {
-  NORMAL // 普通
-  URGENT // 紧急
-}
-
-enum LocationType {
-  MANUAL // 手动输入
-  PRESET // 预设区域
-}
-
-enum AttachmentType {
-  IMAGE
-  VIDEO
-}
-
-enum CommentType {
-  USER
-  HANDLER
-  SYSTEM
-}
-
-enum AssignType {
-  MANUAL
-  AUTO
-}
-
-enum NotificationType {
-  TICKET_ASSIGNED
-  TICKET_ACCEPTED
-  TICKET_COMPLETED
-  TICKET_OVERDUE
-  TICKET_COMMENT
-  TICKET_RATED
-}
-
-// ============================================
-// 用户与权限
-// ============================================
-
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
-  email         String    @unique
+  id            String         @id @default(cuid())
+  username      String         @unique
+  email         String         @unique
   passwordHash  String
   firstName     String?
   lastName      String?
   avatar        String?
-  isActive      Boolean   @default(true)
+  isActive      Boolean        @default(true)
   emailVerified DateTime?
   lastLoginAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // 新增字段：微信相关
-  phone       String? @unique
-  wxOpenId    String? @unique
-  wxNickname  String?
-  wxAvatarUrl String?
-
-  // 新增字段：办事员申请信息
-  realName         String? // 真实姓名（办事员申请时填写）
-  handlerStatus    String? // 办事员申请状态：pending/approved/rejected
-  handlerAppliedAt DateTime? // 申请时间
-
-  // 新增字段：部门与岗位
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  position     String?
-
-  // 现有关联
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
   createdTodos  Todo[]         @relation("CreatedBy")
   updatedTodos  Todo[]         @relation("UpdatedBy")
   roles         UserRole[]
-
-  // 新增关联：工单系统
-  createdTickets  Ticket[]        @relation("TicketCreatedBy")
-  assignedTickets Ticket[]        @relation("TicketAssignedTo")
-  uploadedFiles   Attachment[]
-  comments        Comment[]
-  statusChanges   StatusHistory[]
-  notifications   Notification[]
 
   @@index([email])
   @@index([username])
@@ -197,10 +121,6 @@ model Todo {
   @@map("todos")
 }
 
-// ============================================
-// 分类（扩展）
-// ============================================
-
 model Category {
   id          String     @id @default(cuid())
   name        String
@@ -212,244 +132,9 @@ model Category {
   icon        String?
   sortOrder   Int?
   status      String
-
-  // 新增字段
-  level      Int        @default(1)
-  assignType AssignType @default(MANUAL)
-  deadlineDays  Int?  // 处理时限配置（天），null = 使用优先级回退逻辑
-
-  // 新增关联：工单
-  tickets Ticket[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@index([parentId])
-  @@index([level])
   @@map("categories")
-}
-
-// ============================================
-// 工单核心模型
-// ============================================
-
-model Ticket {
-  id           String @id @default(cuid())
-  ticketNumber String @unique
-
-  // 基本信息
-  title       String
-  description String       @db.Text
-  status      TicketStatus @default(WAIT_ASSIGN)
-  priority    Priority     @default(NORMAL)
-
-  // 分类信息
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  // 位置信息
-  locationType LocationType @default(MANUAL)
-  location     String?      @db.Text
-  presetAreaId String?
-  presetArea   PresetArea?  @relation(fields: [presetAreaId], references: [id])
-
-  // 用户关联
-  createdById String
-  createdBy   User   @relation("TicketCreatedBy", fields: [createdById], references: [id])
-
-  assignedId String?
-  assignedTo User?   @relation("TicketAssignedTo", fields: [assignedId], references: [id])
-
-  // 提报人信息（匿名提交时填写）
-  submitterName  String?
-  submitterPhone String?
-
-  // 时间限制
-  deadlineAt  DateTime?
-  completedAt DateTime?
-  closedAt    DateTime?
-
-  // 评价信息
-  rating   Int?
-  feedback String? @db.Text
-
-  // 超时标记
-  isOverdue Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // 关联关系
-  attachments   Attachment[]
-  comments      Comment[]
-  statusHistory StatusHistory[]
-  notifications Notification[]
-
-  @@index([status])
-  @@index([status, priority])
-  @@index([categoryId])
-  @@index([createdById])
-  @@index([assignedId])
-  @@index([assignedId, status])
-  @@index([ticketNumber])
-  @@index([createdAt(sort: Desc)])
-  @@map("tickets")
-}
-
-// ============================================
-// 附件模型
-// ============================================
-
-model Attachment {
-  id       String         @id @default(cuid())
-  type     AttachmentType
-  url      String
-  fileName String
-  fileSize Int
-  mimeType String
-
-  ticketId String?        // 改为可选：允许先上传附件，后续再关联工单
-  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  uploadedById String
-  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
-
-  // 可选：关联到评论（用于处理记录的附件）
-  commentId String?
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@index([ticketId])
-  @@index([commentId])
-  @@map("attachments")
-}
-
-// ============================================
-// 评论/沟通记录
-// ============================================
-
-model Comment {
-  id      String  @id @default(cuid())
-  content String? @db.Text
-
-  ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  commentType CommentType @default(USER)
-
-  // 关联的附件（处理记录的图片/视频）
-  attachments Attachment[]
-
-  createdAt DateTime @default(now())
-
-  @@index([ticketId])
-  @@map("comments")
-}
-
-// ============================================
-// 状态流转历史
-// ============================================
-
-model StatusHistory {
-  id String @id @default(cuid())
-
-  ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  fromStatus TicketStatus?
-  toStatus   TicketStatus
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  remark String? @db.Text
-
-  createdAt DateTime @default(now())
-
-  @@index([ticketId])
-  @@map("status_history")
-}
-
-// ============================================
-// 预设区域
-// ============================================
-
-model PresetArea {
-  id   String @id @default(cuid())
-  name String
-  code String @unique
-
-  // 所属部门
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-
-  // 关联工单
-  tickets Ticket[]
-
-  sortOrder Int?
-  isActive  Boolean @default(true)
-
-  // 小程序码相关
-  wxacodeUrl       String?    // 小程序码 OSS URL
-  wxacodePath      String?    // 小程序码 OSS 对象路径（用于删除）
-  wxacodeScene     String?    @unique // 小程序码 scene 参数（用于反向查询区域）
-  wxacodeGeneratedAt DateTime? // 生成时间
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([departmentId])
-  @@map("preset_areas")
-}
-
-// ============================================
-// 部门模型
-// ============================================
-
-model Department {
-  id   String @id @default(cuid())
-  name String
-  code String @unique
-
-  users User[]
-  areas PresetArea[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("departments")
-}
-
-// ============================================
-// 通知记录
-// ============================================
-
-model Notification {
-  id   String           @id @default(cuid())
-  type NotificationType
-
-  ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  title   String
-  content String @db.Text
-
-  wxMsgId      String?
-  wxTemplateId String?
-
-  isRead Boolean   @default(false)
-  readAt DateTime?
-
-  sentAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([ticketId])
-  @@map("notifications")
 }

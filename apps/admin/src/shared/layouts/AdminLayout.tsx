@@ -1,237 +1,137 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Dropdown, Avatar, Space, Spin } from "antd";
 import {
   DashboardOutlined,
   CheckSquareOutlined,
   UserOutlined,
   TeamOutlined,
-  FolderOutlined,
   LogoutOutlined,
-  FileTextOutlined,
-  ApartmentOutlined,
-  BankOutlined,
-  ToolOutlined,
-  SettingOutlined,
-  EnvironmentOutlined,
-  ControlOutlined,
-  WechatOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
-import { useAuth } from "../auth/AuthContext";
-import type { MenuProps } from "antd";
-import "./AdminLayout.css";
+import { useState } from "react";
+import { useAuth } from "../auth";
 
-const { Header, Content, Sider } = Layout;
+const { Header, Sider, Content } = Layout;
 
-// Define menu items outside component to prevent recreation
-const createMenuItems = (navigate: (path: string) => void) => [
-  {
-    key: "/dashboard",
-    icon: <DashboardOutlined />,
-    label: "仪表盘",
-    onClick: () => navigate("/dashboard"),
-  },
-  {
-    key: "/tickets",
-    icon: <FileTextOutlined />,
-    label: "工单管理",
-    onClick: () => navigate("/tickets"),
-  },
-  {
-    type: "divider",
-  },
-  {
-    key: "organization",
-    icon: <ApartmentOutlined />,
-    label: "组织架构",
-    children: [
-      {
-        key: "/departments",
-        icon: <BankOutlined />,
-        label: "部门管理",
-        onClick: () => navigate("/departments"),
-      },
-      {
-        key: "/handlers",
-        icon: <ToolOutlined />,
-        label: "办事员管理",
-        onClick: () => navigate("/handlers"),
-      },
-    ],
-  },
-  {
-    key: "basic-config",
-    icon: <SettingOutlined />,
-    label: "基础配置",
-    children: [
-      {
-        key: "/areas",
-        icon: <EnvironmentOutlined />,
-        label: "地点管理",
-        onClick: () => navigate("/areas"),
-      },
-      {
-        key: "/categories",
-        icon: <FolderOutlined />,
-        label: "分类管理",
-        onClick: () => navigate("/categories"),
-      },
-    ],
-  },
-  {
-    type: "divider",
-  },
-  {
-    key: "system",
-    icon: <ControlOutlined />,
-    label: "系统管理",
-    children: [
-      {
-        key: "/wx-users",
-        icon: <WechatOutlined />,
-        label: "微信用户",
-        onClick: () => navigate("/wx-users"),
-      },
-      {
-        key: "/admin-users",
-        icon: <UserOutlined />,
-        label: "后台管理员",
-        onClick: () => navigate("/admin-users"),
-      },
-      {
-        key: "/roles",
-        icon: <TeamOutlined />,
-        label: "角色管理",
-        onClick: () => navigate("/roles"),
-      },
-    ],
-  },
-];
-
-export const AdminLayout: React.FC = () => {
+export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
-  // All hooks must be called before any early returns
-  // Memoize menu items to prevent recreation
-  const menuItems = useMemo(() => createMenuItems(navigate), [navigate]);
+  const menuItems = [
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: "仪表盘",
+      onClick: () => navigate("/dashboard"),
+    },
+    {
+      key: "/todo",
+      icon: <CheckSquareOutlined />,
+      label: "待办事项",
+      onClick: () => navigate("/todo"),
+    },
+    {
+      key: "/users",
+      icon: <UserOutlined />,
+      label: "用户管理",
+      onClick: () => navigate("/users"),
+    },
+    {
+      key: "/roles",
+      icon: <TeamOutlined />,
+      label: "角色管理",
+      onClick: () => navigate("/roles"),
+    },
+  ];
 
-  // Get current selected key based on location
-  const selectedKey = useMemo(() => {
-    const path = location.pathname;
-    // Check if any menu key matches the current path
-    const findKey = (items: any[]): string | undefined => {
-      for (const item of items) {
-        if (item.key === path) return item.key;
-        if (item.children) {
-          const found = findKey(item.children);
-          if (found) return found;
-        }
-      }
-      return undefined;
-    };
-    return findKey(menuItems) || "/dashboard";
-  }, [location.pathname, menuItems]);
-
-  // Get current open keys for submenus based on location
-  const openKeys = useMemo(() => {
-    const path = location.pathname;
-    const findParent = (items: any[]): string[] => {
-      for (const item of items) {
-        if (item.children) {
-          for (const child of item.children) {
-            if (child.key === path) return [item.key];
-            // Check nested children
-            if (child.children) {
-              const found = findParent([child]);
-              if (found.length > 0) return [item.key, ...found];
-            }
-          }
-        }
-      }
-      return [];
-    };
-    return findParent(menuItems);
-  }, [location.pathname, menuItems]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate("/login", { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate]);
-
-  // Handle logout - must be before early returns
-  const handleLogout = useCallback(async () => {
-    await logout();
-    navigate("/login");
-  }, [logout, navigate]);
-
-  // User menu items - must be before early returns
-  const userMenuItems: MenuProps["items"] = useMemo(
-    () => [
-      {
-        key: "logout",
-        icon: <LogoutOutlined />,
-        label: "退出登录",
-        onClick: handleLogout,
-      },
-    ],
-    [handleLogout],
-  );
-
-  // Show loading while checking auth
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
+  const userMenuItems = [
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "退出登录",
+      onClick: logout,
+    },
+  ];
 
   return (
-    <Layout className="admin-layout">
-      <Sider theme="dark" className="admin-sider">
-        <div className="admin-logo">西音码上办</div>
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        style={{
+          overflow: "auto",
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+      >
+        <div
+          style={{
+            height: 32,
+            margin: 16,
+            color: "#fff",
+            fontWeight: "bold",
+            fontSize: collapsed ? 16 : 20,
+            textAlign: "center",
+            overflow: "hidden",
+          }}
+        >
+          {collapsed ? "Admin" : "管理后台"}
+        </div>
         <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          defaultOpenKeys={openKeys}
-          items={menuItems}
           theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
         />
       </Sider>
-      <Layout>
-        <Header className="admin-header">
-          <div className="admin-header-title">管理平台</div>
-          <Space>
-            <span className="admin-username">{user?.username || "用户"}</span>
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Avatar
-                src={user?.avatar}
-                icon={<UserOutlined />}
-                className="admin-avatar"
-              />
+      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: "all 0.2s" }}>
+        <Header
+          style={{
+            padding: "0 24px",
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "0 1px 4px rgba(0,21,41,.08)",
+          }}
+        >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{ fontSize: 16, width: 64, height: 64 }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+            >
+              <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+                <Avatar size="small" icon={<UserOutlined />} src={user?.avatar} />
+                <span style={{ fontSize: 14 }}>{user?.username || "用户"}</span>
+              </div>
             </Dropdown>
-          </Space>
+          </div>
         </Header>
-        <Content className="admin-content">
+        <Content
+          style={{
+            margin: "24px 16px",
+            padding: 24,
+            minHeight: 280,
+            background: "#fff",
+            borderRadius: 8,
+          }}
+        >
           <Outlet />
         </Content>
       </Layout>
     </Layout>
   );
-};
+}
