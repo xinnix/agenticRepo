@@ -11,8 +11,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: xinnix2000/feedbackhub-api:v1-local
-    container_name: feedbackhub-api-local
+    image: xinnix2000/agenticrepo-api:v1-local
+    container_name: agenticrepo-api-local
     ports:
       - "3000:3000"
     env_file:
@@ -20,8 +20,8 @@ services:
     restart: unless-stopped
 
   admin:
-    image: xinnix2000/feedbackhub-admin:v1-local
-    container_name: feedbackhub-admin-local
+    image: xinnix2000/agenticrepo-admin:v1-local
+    container_name: agenticrepo-admin-local
     ports:
       - "8080:80"
     env_file:
