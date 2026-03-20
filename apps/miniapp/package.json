@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "unh dev",
     "build": "unh build",
+    "dev:mp-weixin": "unh dev mp-weixin",
+    "build:mp-weixin": "unh build mp-weixin",
     "about": "unh info",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest",
