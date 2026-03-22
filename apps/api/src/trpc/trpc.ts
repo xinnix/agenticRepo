@@ -45,8 +45,8 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
     const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     const payload = jwt.verify(token, secret) as JwtPayload;
 
-    // Fetch user from database with roles and permissions
-    const user = await prisma.user.findUnique({
+    // Fetch admin from database with roles and permissions
+    const admin = await prisma.admin.findUnique({
       where: { id: payload.sub },
       include: {
         roles: {
@@ -65,23 +65,23 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!admin || !admin.isActive) {
       return null;
     }
 
     // Flatten permissions
-    const permissions = user.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
+    const permissions = admin.roles?.flatMap((ar: any) =>
+      ar.role.permissions?.map((rp: any) =>
         `${rp.permission.resource}:${rp.permission.action}`,
       ),
     ) || [];
 
     return {
-      id: user.id,
-      email: user.email,
-      username: user.username,
+      id: admin.id,
+      email: admin.email,
+      username: admin.username,
       permissions,
-      roles: user.roles?.map((ur: any) => ur.role) || [],
+      roles: admin.roles?.map((ar: any) => ar.role) || [],
     };
   } catch (error) {
     // Token is invalid or expired
@@ -155,9 +155,6 @@ export const permissionProcedure = (resource: string, action: string) =>
 
     // Get user permissions from context
     const userPermissions: string[] = ctx.user?.permissions || [];
-
-    // Import permission helpers
-    const { hasSuperAdminRole } = await import('../shared/permissions');
 
     // Super admin has all permissions
     // Note: ctx.user.roles is an array of Role objects (from verifyJwtToken)

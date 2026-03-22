@@ -23,11 +23,12 @@ export const API_ENDPOINTS = {
   login: '/auth/login',
   logout: '/auth/logout',
   register: '/auth/register',
-  profile: '/user/profile',
+  profile: '/user/me',
+  wechatLogin: '/auth/wechat/login',
 
   // TODO 相关
-  todos: '/todos',
-  todoDetail: (id: string) => `/todos/${id}`,
+  todos: '/todo',
+  todoDetail: (id: string) => `/todo/${id}`,
 } as const
 
 export default API_CONFIG

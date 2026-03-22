@@ -9,6 +9,9 @@ import { AuthController } from './rest/auth.controller';
 import { AuthService } from './services/auth.service';
 import { JwtStrategy } from './services/jwt.strategy';
 
+// 模块
+import { WechatModule } from '../wechat/wechat.module';
+
 // 数据库
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -22,6 +25,7 @@ import { PrismaService } from '../../prisma/prisma.service';
       },
       global: true,
     }),
+    WechatModule,
   ],
   controllers: [AuthController],
   providers: [

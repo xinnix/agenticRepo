@@ -124,6 +124,17 @@ export type RoleSlug = typeof ROLES[keyof typeof ROLES];
 // Todo Schemas
 // ============================================
 
+export const TodoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  isCompleted: z.boolean(),
+  priority: z.number(),
+  dueDate: z.date().optional().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 export const CreateTodoSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(100),
   description: z.string().optional(),
@@ -131,11 +142,43 @@ export const CreateTodoSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
 });
 
+export const UpdateTodoSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  isCompleted: z.boolean().optional(),
+  priority: z.number().int().min(1).max(3).optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
+
+export const TodoListQuerySchema = z.object({
+  page: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined),
+  pageSize: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined),
+  search: z.string().optional(),
+  isCompleted: z.string().optional().transform(val => val === 'true'),
+});
+
+export type TodoInput = z.infer<typeof TodoSchema>;
 export type CreateTodoInput = z.infer<typeof CreateTodoSchema>;
+export type UpdateTodoInput = z.infer<typeof UpdateTodoSchema>;
+export type TodoListQueryInput = z.infer<typeof TodoListQuerySchema>;
 
 // ============================================
 // User Management Schemas
 // ============================================
+
+export const UserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  email: z.string().email(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  avatar: z.string().optional(),
+  isActive: z.boolean(),
+  emailVerified: z.date().optional().nullable(),
+  lastLoginAt: z.date().optional().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
 
 export const CreateUserSchema = z.object({
   username: z.string().min(3, "用户名至少3个字符"),
@@ -150,6 +193,8 @@ export const UpdateUserSchema = z.object({
   email: z.string().email().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  avatar: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const UserListQuerySchema = z.object({
@@ -175,16 +220,34 @@ export const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8, "密码至少8个字符"),
 });
 
+export const HandlerApplicationSchema = z.object({
+  userId: z.string(),
+  handlerId: z.string(),
+});
+
+export type UserInput = z.infer<typeof UserSchema>;
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export type UserListQueryInput = z.infer<typeof UserListQuerySchema>;
 export type AssignRoleInput = z.infer<typeof AssignRoleSchema>;
 export type BatchAssignRolesInput = z.infer<typeof BatchAssignRolesSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+export type HandlerApplicationInput = z.infer<typeof HandlerApplicationSchema>;
 
 // ============================================
 // Role Management Schemas
 // ============================================
+
+export const RoleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().optional(),
+  level: z.number(),
+  isSystem: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
 
 export const CreateRoleSchema = z.object({
   name: z.string().min(1, "角色名称不能为空"),
@@ -210,6 +273,7 @@ export const UpdateRolePermissionsSchema = z.object({
   permissionIds: z.array(z.string()),
 });
 
+export type RoleInput = z.infer<typeof RoleSchema>;
 export type CreateRoleInput = z.infer<typeof CreateRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof UpdateRoleSchema>;
 export type RoleListQueryInput = z.infer<typeof RoleListQuerySchema>;

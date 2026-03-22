@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { router, publicProcedure, protectedProcedure } from '../../../trpc/trpc';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { z } from 'zod';
 
 // 🔥 使用 @opencode/shared 的 Zod schema
 import {
@@ -11,10 +12,10 @@ import {
 } from '@opencode/shared';
 
 // Helper functions
-function generateAccessToken(userId: string, email: string): string {
+function generateAccessToken(userId: string, email: string, type: 'admin' | 'user' = 'user'): string {
   const jwt = require('jsonwebtoken');
   return jwt.sign(
-    { sub: userId, email },
+    { sub: userId, email, type },
     process.env.JWT_SECRET || 'your-secret-key-change-in-production',
     { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
   );
@@ -31,7 +32,7 @@ async function calculateRefreshTokenExpiry() {
 }
 
 export const authRouter = router({
-  // Register new user
+  // Register new user (小程序用户)
   register: publicProcedure
     .input(RegisterSchema)
     .mutation(async ({ ctx, input }) => {
@@ -46,29 +47,17 @@ export const authRouter = router({
         if (existingUser.email === input.email) {
           throw new TRPCError({
             code: 'CONFLICT',
-            message: 'Email already registered',
+            message: '邮箱已被注册',
           });
         }
         throw new TRPCError({
           code: 'CONFLICT',
-          message: 'Username already taken',
+          message: '用户名已存在',
         });
       }
 
       // Hash password
       const passwordHash = await bcrypt.hash(input.password, 10);
-
-      // Get default viewer role
-      const viewerRole = await ctx.prisma.role.findUnique({
-        where: { slug: 'viewer' },
-      });
-
-      if (!viewerRole) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Viewer role not found. Please run database seed first.',
-        });
-      }
 
       // Create user
       const user = await ctx.prisma.user.create({
@@ -76,38 +65,17 @@ export const authRouter = router({
           username: input.username,
           email: input.email,
           passwordHash,
-          firstName: input.firstName,
-          lastName: input.lastName,
-          roles: {
-            create: {
-              roleId: viewerRole.id,
-            },
-          },
-        },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
+          nickname: input.firstName ? `${input.firstName} ${input.lastName || ''}`.trim() : undefined,
         },
       });
 
       // Generate tokens
-      const accessToken = generateAccessToken(user.id, user.email);
+      const accessToken = generateAccessToken(user.id, user.email, 'user');
       const refreshToken = generateRefreshToken();
       const expiresAt = await calculateRefreshTokenExpiry();
 
       // Save refresh token
-      await ctx.prisma.refreshToken.create({
+      await ctx.prisma.userRefreshToken.create({
         data: {
           token: refreshToken,
           userId: user.id,
@@ -115,30 +83,172 @@ export const authRouter = router({
         },
       });
 
-      // Sanitize user and flatten permissions for response
+      // Sanitize user
       const { passwordHash: _, ...sanitizedUser } = user;
 
-      // Flatten permissions from roles into a simple array
-      const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-        ur.role.permissions?.map((rp: any) => `${rp.permission.resource}:${rp.permission.action}`)
-      ) || [];
-
       return {
-        user: {
-          ...sanitizedUser,
-          permissions,
-        },
+        user: sanitizedUser,
         accessToken,
         refreshToken,
       };
     }),
 
-  // Login
+  // Login for miniapp users (小程序用户登录)
   login: publicProcedure
     .input(LoginSchema)
     .mutation(async ({ ctx, input }) => {
       // Find user
       const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: '无效的凭证',
+        });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(input.password, user.passwordHash);
+      if (!isValidPassword) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: '无效的凭证',
+        });
+      }
+
+      // Check if active
+      if (!user.isActive) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: '账户已被禁用',
+        });
+      }
+
+      // Update last login
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
+      // Generate tokens
+      const accessToken = generateAccessToken(user.id, user.email, 'user');
+      const refreshToken = generateRefreshToken();
+      const expiresAt = await calculateRefreshTokenExpiry();
+
+      // Save refresh token
+      await ctx.prisma.userRefreshToken.create({
+        data: {
+          token: refreshToken,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+
+      // Sanitize user
+      const { passwordHash: _, ...sanitizedUser } = user;
+
+      return {
+        user: sanitizedUser,
+        accessToken,
+        refreshToken,
+      };
+    }),
+
+  // WeChat login (微信登录)
+  wechatLogin: publicProcedure
+    .input(z.object({ code: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Get WeChat config from environment
+      const appId = process.env.WX_APP_ID;
+      const appSecret = process.env.WX_APP_SECRET;
+
+      if (!appId || !appSecret) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: '微信登录未配置',
+        });
+      }
+
+      // Call WeChat API to get openid and session_key
+      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${input.code}&grant_type=authorization_code`;
+
+      let wechatData: any;
+      try {
+        const response = await fetch(url);
+        wechatData = await response.json();
+
+        if (wechatData.errcode) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `微信登录失败: ${wechatData.errmsg}`,
+          });
+        }
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: '微信登录服务异常',
+        });
+      }
+
+      const { openid, session_key: sessionKey, unionid } = wechatData;
+
+      // Find or create user
+      let user = await ctx.prisma.user.findUnique({
+        where: { openid },
+      });
+
+      if (!user) {
+        // Create new user
+        user = await ctx.prisma.user.create({
+          data: {
+            openid,
+            sessionKey,
+            unionid,
+            username: `wx_${openid.slice(0, 8)}`,
+            email: `wx_${openid.slice(0, 8)}@placeholder.com`,
+            passwordHash: '',
+          },
+        });
+      } else {
+        // Update sessionKey
+        user = await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: { sessionKey, lastLoginAt: new Date() },
+        });
+      }
+
+      // Generate tokens
+      const accessToken = generateAccessToken(user.id, user.email, 'user');
+      const refreshToken = generateRefreshToken();
+      const expiresAt = await calculateRefreshTokenExpiry();
+
+      // Save refresh token
+      await ctx.prisma.userRefreshToken.create({
+        data: {
+          token: refreshToken,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+
+      // Sanitize user
+      const { passwordHash: _, sessionKey: __, ...sanitizedUser } = user;
+
+      return {
+        user: sanitizedUser,
+        accessToken,
+        refreshToken,
+      };
+    }),
+
+  // Login for admin users (管理端用户登录)
+  adminLogin: publicProcedure
+    .input(LoginSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Find admin
+      const admin = await ctx.prisma.admin.findUnique({
         where: { email: input.email },
         include: {
           roles: {
@@ -157,61 +267,61 @@ export const authRouter = router({
         },
       });
 
-      if (!user) {
+      if (!admin) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Invalid credentials',
+          message: '无效的凭证',
         });
       }
 
       // Verify password
-      const isValidPassword = await bcrypt.compare(input.password, user.passwordHash);
+      const isValidPassword = await bcrypt.compare(input.password, admin.passwordHash);
       if (!isValidPassword) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Invalid credentials',
+          message: '无效的凭证',
         });
       }
 
       // Check if active
-      if (!user.isActive) {
+      if (!admin.isActive) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Account is disabled',
+          message: '账户已被禁用',
         });
       }
 
       // Update last login
-      await ctx.prisma.user.update({
-        where: { id: user.id },
+      await ctx.prisma.admin.update({
+        where: { id: admin.id },
         data: { lastLoginAt: new Date() },
       });
 
       // Generate tokens
-      const accessToken = generateAccessToken(user.id, user.email);
+      const accessToken = generateAccessToken(admin.id, admin.email, 'admin');
       const refreshToken = generateRefreshToken();
       const expiresAt = await calculateRefreshTokenExpiry();
 
       // Save refresh token
-      await ctx.prisma.refreshToken.create({
+      await ctx.prisma.adminRefreshToken.create({
         data: {
           token: refreshToken,
-          userId: user.id,
+          adminId: admin.id,
           expiresAt,
         },
       });
 
-      // Sanitize user and flatten permissions
-      const { passwordHash: _, ...sanitizedUser } = user;
+      // Sanitize admin and flatten permissions
+      const { passwordHash: _, ...sanitizedAdmin } = admin;
 
       // Flatten permissions from roles into a simple array
-      const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-        ur.role.permissions?.map((rp: any) => `${rp.permission.resource}:${rp.permission.action}`)
+      const permissions = sanitizedAdmin.roles?.flatMap((ar: any) =>
+        ar.role.permissions?.map((rp: any) => `${rp.permission.resource}:${rp.permission.action}`)
       ) || [];
 
       return {
         user: {
-          ...sanitizedUser,
+          ...sanitizedAdmin,
           permissions,
         },
         accessToken,
@@ -223,16 +333,26 @@ export const authRouter = router({
   refreshToken: publicProcedure
     .input(RefreshTokenSchema)
     .mutation(async ({ ctx, input }) => {
-      // Find refresh token
-      const token = await ctx.prisma.refreshToken.findUnique({
+      // Try to find admin refresh token first
+      let token = await ctx.prisma.adminRefreshToken.findUnique({
         where: { token: input.refreshToken },
-        include: { user: true },
+        include: { admin: true },
       });
+      let userType = 'admin';
+
+      // If not found, try user refresh token
+      if (!token) {
+        token = await ctx.prisma.userRefreshToken.findUnique({
+          where: { token: input.refreshToken },
+          include: { user: true },
+        }) as any;
+        userType = 'user';
+      }
 
       if (!token) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Invalid refresh token',
+          message: '无效的刷新令牌',
         });
       }
 
@@ -240,37 +360,54 @@ export const authRouter = router({
       if (token.revokedAt || token.expiresAt < new Date()) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Refresh token expired',
+          message: '刷新令牌已过期',
         });
       }
 
-      // Check if user is active
-      if (!token.user.isActive) {
+      // Check if user/admin is active
+      const entity = userType === 'admin' ? (token as any).admin : (token as any).user;
+      if (!entity.isActive) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: 'Account is disabled',
+          message: '账户已被禁用',
         });
       }
 
       // Generate new tokens
-      const accessToken = generateAccessToken(token.user.id, token.user.email);
+      const accessToken = generateAccessToken(entity.id, entity.email, userType as any);
       const newRefreshToken = generateRefreshToken();
       const expiresAt = await calculateRefreshTokenExpiry();
 
       // Revoke old token
-      await ctx.prisma.refreshToken.update({
-        where: { id: token.id },
-        data: { revokedAt: new Date() },
-      });
+      if (userType === 'admin') {
+        await ctx.prisma.adminRefreshToken.update({
+          where: { id: token.id },
+          data: { revokedAt: new Date() },
+        });
 
-      // Save new refresh token
-      await ctx.prisma.refreshToken.create({
-        data: {
-          token: newRefreshToken,
-          userId: token.user.id,
-          expiresAt,
-        },
-      });
+        // Save new refresh token
+        await ctx.prisma.adminRefreshToken.create({
+          data: {
+            token: newRefreshToken,
+            adminId: entity.id,
+            expiresAt,
+          },
+        });
+      } else {
+        await ctx.prisma.userRefreshToken.update({
+          where: { id: token.id },
+          data: { revokedAt: new Date() },
+        });
+
+        // Save new refresh token
+        await ctx.prisma.userRefreshToken.create({
+          data: {
+            token: newRefreshToken,
+            userId: entity.id,
+            expiresAt,
+          },
+        });
+      }
 
       return {
         accessToken,
@@ -296,8 +433,16 @@ export const authRouter = router({
   logout: protectedProcedure
     .input(RefreshTokenSchema)
     .mutation(async ({ ctx, input }) => {
-      // Revoke refresh token
-      await ctx.prisma.refreshToken.updateMany({
+      // Revoke admin refresh token
+      await ctx.prisma.adminRefreshToken.updateMany({
+        where: {
+          token: input.refreshToken,
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      // Revoke user refresh token
+      await ctx.prisma.userRefreshToken.updateMany({
         where: {
           token: input.refreshToken,
         },

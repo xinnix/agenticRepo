@@ -113,3 +113,146 @@ import type { User } from '@opencode/shared'
 1. 小程序使用 uni-app 框架，需要安装 HBuilderX 或使用 CLI 开发
 2. 微信小程序需要在微信公众平台注册并配置 AppID
 3. 开发前请在 `manifest.config.ts` 中配置小程序 AppID
+
+---
+
+## API 开发指南
+
+### API 规范
+
+小程序采用统一的 API 规范与后端交互：
+
+**响应格式**:
+```typescript
+{
+  success: boolean
+  data: T
+  message?: string
+}
+```
+
+### 创建新的 API 模块
+
+#### 1. 定义 API 端点
+
+在 `src/config/api.ts` 中添加端点：
+
+```typescript
+export const API_ENDPOINTS = {
+  // ... 其他端点
+  articles: '/article',
+  articleDetail: (id: string) => `/article/${id}`,
+}
+```
+
+#### 2. 创建 API 文件
+
+在 `src/api/` 创建新文件：
+
+```typescript
+// src/api/article.ts
+import { http } from '@/utils/http'
+import { API_ENDPOINTS } from '@/config/api'
+
+export interface Article {
+  id: string
+  title: string
+  content: string
+  createdAt: string
+}
+
+export const articleApi = {
+  getList: () => {
+    return http.get<Article[]>(API_ENDPOINTS.articles)
+  },
+
+  getDetail: (id: string) => {
+    return http.get<Article>(API_ENDPOINTS.articleDetail(id))
+  },
+
+  create: (data: { title: string; content: string }) => {
+    return http.post<Article>(API_ENDPOINTS.articles, data)
+  },
+}
+```
+
+#### 3. 在页面中使用
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { articleApi, type Article } from '@/api/article'
+
+const articles = ref<Article[]>([])
+
+const loadArticles = async () => {
+  try {
+    const res = await articleApi.getList()
+    articles.value = res.data || []
+  } catch (error) {
+    console.error('加载失败:', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
+  }
+}
+
+onMounted(() => {
+  loadArticles()
+})
+</script>
+```
+
+### HTTP 请求方法
+
+```typescript
+// GET 请求
+http.get<T>(url, params)
+
+// POST 请求
+http.post<T>(url, data)
+
+// PUT 请求
+http.put<T>(url, data)
+
+// DELETE 请求
+http.delete<T>(url, data)
+```
+
+### 认证机制
+
+登录后保存 token:
+
+```typescript
+uni.setStorageSync('token', response.data.accessToken)
+```
+
+HTTP 工具会自动添加到请求头:
+
+```typescript
+Authorization: `Bearer ${token}`
+```
+
+## 示例功能
+
+### Todo List
+
+项目已内置 Todo List 示例功能，展示完整的 CRUD 操作：
+
+- **页面**: `src/pages/todo.vue`
+- **API**: `src/api/todo.ts`
+
+功能包括：
+- ✅ 获取 Todo 列表
+- ✅ 创建新 Todo
+- ✅ 编辑 Todo
+- ✅ 删除 Todo
+- ✅ 切换完成状态
+
+访问方式：首页点击 "Todo List" 卡片
+
+## 最佳实践
+
+1. **类型安全**: 始终定义 TypeScript 接口
+2. **错误处理**: 使用 try-catch 并友好提示
+3. **加载状态**: 显示加载状态提升体验
+4. **数据缓存**: 合理使用本地存储
+5. **代码组织**: 按功能模块组织文件

@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { PrismaService } from '../../../prisma/prisma.service';
-import axios from 'axios';
+import { WechatService } from '../../wechat/wechat.service';
 
 // 🔥 使用 @opencode/shared 的类型和 schema
 import {
@@ -16,26 +16,20 @@ import {
 
 @Injectable()
 export class AuthService {
-  // 微信 access_token 缓存
-  private wxAccessTokenCache: {
-    token: string;
-    expiresAt: Date;
-  } | null = null;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly wechatService: WechatService,
   ) {
     console.log('[AuthService] ================================');
     console.log('[AuthService] JWT_SECRET from process.env:', !!process.env.JWT_SECRET);
-    console.log('[AuthService] process.env.JWT_SECRET value:', process.env.JWT_SECRET?.substring(0, 30) + '...');
     console.log('[AuthService] ================================');
   }
 
   /**
-   * 🔐 注册新用户
+   * 🔐 注册小程序用户
    */
-  async register(input: z.infer<typeof RegisterSchema>) {
+  async registerUser(input: z.infer<typeof RegisterSchema>) {
     // 1️⃣ 验证输入
     const data = RegisterSchema.parse(input);
 
@@ -56,78 +50,129 @@ export class AuthService {
     // 3️⃣ 哈希密码
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // 4️⃣ 获取默认角色
-    const userRole = await this.prisma.role.findUnique({
-      where: { slug: 'user' },
-    });
-
-    if (!userRole) {
-      throw new Error('普通用户角色未找到，请先运行数据库种子');
-    }
-
-    // 5️⃣ 创建用户
+    // 4️⃣ 创建用户
     const user = await this.prisma.user.create({
       data: {
         username: data.username,
         email: data.email,
         passwordHash,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        roles: {
-          create: {
-            roleId: userRole.id,
-          },
-        },
-      },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+        nickname: data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : undefined,
       },
     });
 
-    // 6️⃣ 生成令牌
-    const { accessToken, refreshToken } = await this.generateTokens(user as any);
+    // 5️⃣ 生成令牌
+    const { accessToken, refreshToken } = await this.generateUserTokens(user);
 
-    // 7️⃣ 返回用户信息（不包含密码哈希）
+    // 6️⃣ 返回用户信息（不包含密码哈希）
     const { passwordHash: _, ...sanitizedUser } = user;
 
-    // 8️⃣ 扁平化权限
-    const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
-        `${rp.permission.resource}:${rp.permission.action}`,
-      ),
-    ) || [];
-
     return {
-      user: {
-        ...sanitizedUser,
-        permissions,
-      },
+      user: sanitizedUser,
       accessToken,
       refreshToken,
     };
   }
 
   /**
-   * 🔑 用户登录
+   * 🔑 小程序用户登录
    */
-  async login(input: z.infer<typeof LoginSchema>) {
+  async loginUser(input: z.infer<typeof LoginSchema>) {
     // 1️⃣ 验证输入
     const data = LoginSchema.parse(input);
 
     // 2️⃣ 查找用户
     const user = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('无效的凭证');
+    }
+
+    // 3️⃣ 验证密码
+    const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('无效的凭证');
+    }
+
+    // 4️⃣ 更新最后登录时间
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    // 5️⃣ 生成令牌
+    const { accessToken, refreshToken } = await this.generateUserTokens(user);
+
+    // 6️⃣ 返回用户信息
+    const { passwordHash: _, ...sanitizedUser } = user;
+
+    return {
+      user: sanitizedUser,
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
+   * 🟢 微信登录
+   * 1. 通过 code 获取 openid
+   * 2. 查找用户，不存在则创建
+   * 3. 更新 sessionKey
+   * 4. 生成并返回 token
+   */
+  async loginWithWechat(code: string) {
+    // 1. 获取 openid 和 sessionKey
+    const { openid, sessionKey, unionid } = await this.wechatService.code2Session(code);
+
+    // 2. 查找或创建用户
+    let user = await this.prisma.user.findUnique({
+      where: { openid },
+    });
+
+    if (!user) {
+      // 创建新用户
+      user = await this.prisma.user.create({
+        data: {
+          openid,
+          sessionKey,
+          unionid,
+          username: `wx_${openid.slice(0, 8)}`, // 临时用户名
+          email: `wx_${openid.slice(0, 8)}@placeholder.com`, // 临时邮箱
+          passwordHash: '', // 微信用户不需要密码
+        },
+      });
+    } else {
+      // 更新 sessionKey
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { sessionKey, lastLoginAt: new Date() },
+      });
+    }
+
+    // 3. 生成令牌
+    const { accessToken, refreshToken } = await this.generateUserTokens(user);
+
+    // 4. 返回用户信息
+    const { passwordHash: _, sessionKey: __, ...sanitizedUser } = user;
+
+    return {
+      user: sanitizedUser,
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
+   * 🔑 管理端用户登录
+   */
+  async loginAdmin(input: z.infer<typeof LoginSchema>) {
+    // 1️⃣ 验证输入
+    const data = LoginSchema.parse(input);
+
+    // 2️⃣ 查找管理员
+    const admin = await this.prisma.admin.findUnique({
       where: { email: data.email },
       include: {
         roles: {
@@ -146,41 +191,39 @@ export class AuthService {
       },
     });
 
-    if (!user) {
+    if (!admin) {
       throw new UnauthorizedException('无效的凭证');
     }
 
     // 3️⃣ 验证密码
-    const isValidPassword = await bcrypt.compare(data.password, user.passwordHash);
-    if (!isValidPassword) {
+    const isPasswordValid = await bcrypt.compare(data.password, admin.passwordHash);
+
+    if (!isPasswordValid) {
       throw new UnauthorizedException('无效的凭证');
     }
 
-    // 4️⃣ 检查账户状态
-    if (!user.isActive) {
-      throw new UnauthorizedException('账户已被禁用');
-    }
-
-    // 5️⃣ 更新最后登录时间
-    await this.prisma.user.update({
-      where: { id: user.id },
+    // 4️⃣ 更新最后登录时间
+    await this.prisma.admin.update({
+      where: { id: admin.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // 6️⃣ 生成令牌
-    const { accessToken, refreshToken } = await this.generateTokens(user as any);
+    // 5️⃣ 生成令牌
+    const { accessToken, refreshToken } = await this.generateAdminTokens(admin);
 
-    // 7️⃣ 返回用户信息
-    const { passwordHash: _, ...sanitizedUser } = user;
-    const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
+    // 6️⃣ 返回用户信息
+    const { passwordHash: _, ...sanitizedAdmin } = admin;
+
+    // 7️⃣ 扁平化权限
+    const permissions = sanitizedAdmin.roles?.flatMap((ar: any) =>
+      ar.role.permissions?.map((rp: any) =>
         `${rp.permission.resource}:${rp.permission.action}`,
       ),
     ) || [];
 
     return {
       user: {
-        ...sanitizedUser,
+        ...sanitizedAdmin,
         permissions,
       },
       accessToken,
@@ -189,48 +232,77 @@ export class AuthService {
   }
 
   /**
-   * 🔄 刷新令牌
+   * 🔄 刷新访问令牌
    */
   async refreshToken(input: z.infer<typeof RefreshTokenSchema>) {
+    // 1️⃣ 验证输入
     const data = RefreshTokenSchema.parse(input);
 
-    // 查找刷新令牌
-    const token = await this.prisma.refreshToken.findUnique({
+    // 2️⃣ 查找刷新令牌（先在 Admin 表查找）
+    let refreshToken = await this.prisma.adminRefreshToken.findUnique({
       where: { token: data.refreshToken },
-      include: { user: true },
+      include: { admin: true },
     });
 
-    if (!token) {
+    let userType = 'admin';
+
+    // 3️⃣ 如果 Admin 表没找到，在 User 表查找
+    if (!refreshToken) {
+      refreshToken = await this.prisma.userRefreshToken.findUnique({
+        where: { token: data.refreshToken },
+        include: { user: true },
+      }) as any;
+      userType = 'user';
+    }
+
+    if (!refreshToken) {
       throw new UnauthorizedException('无效的刷新令牌');
     }
 
-    // 检查令牌是否被撤销或过期
-    if (token.revokedAt || token.expiresAt < new Date()) {
-      throw new UnauthorizedException('刷新令牌已过期');
+    // 4️⃣ 检查令牌是否已过期或被撤销
+    if (refreshToken.revokedAt || refreshToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('刷新令牌已过期或已撤销');
     }
 
-    // 检查用户是否活跃
-    if (!token.user.isActive) {
-      throw new UnauthorizedException('账户已被禁用');
+    // 5️⃣ 生成新令牌
+    let accessToken: string;
+    let newRefreshToken: string;
+
+    if (userType === 'admin') {
+      const tokens = await this.generateAdminTokens((refreshToken as any).admin);
+      accessToken = tokens.accessToken;
+      newRefreshToken = tokens.refreshToken;
+    } else {
+      const tokens = await this.generateUserTokens((refreshToken as any).user);
+      accessToken = tokens.accessToken;
+      newRefreshToken = tokens.refreshToken;
     }
 
-    // 生成新令牌
-    const { accessToken, refreshToken } = await this.generateTokens(token.user as any);
+    // 6️⃣ 撤销旧的刷新令牌
+    if (userType === 'admin') {
+      await this.prisma.adminRefreshToken.update({
+        where: { id: refreshToken.id },
+        data: { revokedAt: new Date() },
+      });
+    } else {
+      await this.prisma.userRefreshToken.update({
+        where: { id: refreshToken.id },
+        data: { revokedAt: new Date() },
+      });
+    }
 
-    // 撤销旧令牌
-    await this.prisma.refreshToken.update({
-      where: { id: token.id },
-      data: { revokedAt: new Date() },
-    });
-
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 
   /**
-   * 👤 获取当前用户
+   * 👤 获取当前用户信息
    */
   async getCurrentUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    // 先在 Admin 表查找
+    let user = await this.prisma.admin.findUnique({
       where: { id: userId },
       include: {
         roles: {
@@ -246,38 +318,56 @@ export class AuthService {
             },
           },
         },
-        department: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
       },
     });
+
+    let userType = 'admin';
+
+    // 如果 Admin 表没找到，在 User 表查找
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      }) as any;
+      userType = 'user';
+    }
 
     if (!user) {
       throw new UnauthorizedException('用户未找到');
     }
 
     const { passwordHash: _, ...sanitizedUser } = user;
-    const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
-        `${rp.permission.resource}:${rp.permission.action}`,
-      ),
-    ) || [];
 
-    return {
-      ...sanitizedUser,
-      permissions,
-    };
+    if (userType === 'admin') {
+      const permissions = (sanitizedUser as any).roles?.flatMap((ar: any) =>
+        ar.role.permissions?.map((rp: any) =>
+          `${rp.permission.resource}:${rp.permission.action}`,
+        ),
+      ) || [];
+
+      return {
+        ...sanitizedUser,
+        permissions,
+      };
+    }
+
+    return sanitizedUser;
   }
 
   /**
    * 🚪 用户登出
    */
   async logout(userId: string, refreshToken: string) {
-    await this.prisma.refreshToken.updateMany({
+    // 撤销 Admin 刷新令牌
+    const adminResult = await this.prisma.adminRefreshToken.updateMany({
+      where: {
+        token: refreshToken,
+        adminId: userId,
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    // 撤销 User 刷新令牌
+    const userResult = await this.prisma.userRefreshToken.updateMany({
       where: {
         token: refreshToken,
         userId,
@@ -289,16 +379,15 @@ export class AuthService {
   }
 
   /**
-   * 🔐 生成访问令牌和刷新令牌
+   * 🔐 生成小程序用户令牌
    */
-  private async generateTokens(user: any) {
+  private async generateUserTokens(user: any) {
     // 生成访问令牌
-    console.log('[AuthService] Generating token with JWT_SECRET:', !!process.env.JWT_SECRET);
     const accessToken = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      type: 'user',
     });
-    console.log('[AuthService] Generated token:', accessToken.substring(0, 30) + '...');
 
     // 生成刷新令牌
     const refreshToken = randomBytes(32).toString('hex');
@@ -308,7 +397,7 @@ export class AuthService {
     expiresAt.setDate(expiresAt.getDate() + 30); // 30天
 
     // 保存刷新令牌
-    await this.prisma.refreshToken.create({
+    await this.prisma.userRefreshToken.create({
       data: {
         token: refreshToken,
         userId: user.id,
@@ -320,234 +409,32 @@ export class AuthService {
   }
 
   /**
-   * 📱 微信小程序登录
+   * 🔐 生成管理端用户令牌
    */
-  async wxLogin(input: {
-    code: string;
-    phoneCode?: string; // 手机号改为可选
-    userInfo?: { nickName: string; avatarUrl: string };
-  }) {
-    console.log('DEBUG wxLogin - prisma:', !!this.prisma, 'jwt:', !!this.jwtService);
-    // 1️⃣ 从环境变量获取微信配置
-    const wxAppId = process.env.WX_APP_ID;
-    const wxAppSecret = process.env.WX_APP_SECRET;
+  private async generateAdminTokens(admin: any) {
+    // 生成访问令牌
+    const accessToken = this.jwtService.sign({
+      sub: admin.id,
+      email: admin.email,
+      type: 'admin',
+    });
 
-    if (!wxAppId || !wxAppSecret) {
-      throw new Error('微信配置未设置，请在环境变量中配置 WX_APP_ID 和 WX_APP_SECRET');
-    }
+    // 生成刷新令牌
+    const refreshToken = randomBytes(32).toString('hex');
 
-    // 2️⃣ 通过 code 换取 openid 和 session_key
-    let openid: string;
-    try {
-      const wxResponse = await axios.get(
-        `https://api.weixin.qq.com/sns/jscode2session?appid=${wxAppId}&secret=${wxAppSecret}&js_code=${input.code}&grant_type=authorization_code`,
-      );
-      openid = wxResponse.data.openid;
-      if (!openid) {
-        throw new Error(`获取 openid 失败: ${JSON.stringify(wxResponse.data)}`);
-      }
-    } catch (error) {
-      Logger.error('微信登录失败', error);
-      throw new UnauthorizedException('微信登录失败，请重试');
-    }
+    // 计算过期时间
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30天
 
-    // 3️⃣ 通过 phoneCode 换取手机号（如果提供了 phoneCode）
-    let phone: string | undefined;
-    if (input.phoneCode) {
-      try {
-        const phoneResponse = await axios.post(
-          `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${await this.getWxAccessToken()}`,
-          { code: input.phoneCode },
-        );
-        phone = phoneResponse.data.phone_info?.phoneNumber;
-      } catch (error) {
-        Logger.warn('获取手机号失败，继续登录流程', error);
-      }
-    }
-
-    // 4️⃣ 查找或创建用户
-    let user = await this.prisma.user.findUnique({
-      where: { wxOpenId: openid },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        department: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
+    // 保存刷新令牌
+    await this.prisma.adminRefreshToken.create({
+      data: {
+        token: refreshToken,
+        adminId: admin.id,
+        expiresAt,
       },
     });
 
-    if (!user) {
-      // 获取普通用户角色
-      const userRole = await this.prisma.role.findUnique({
-        where: { slug: 'user' },
-      });
-
-      if (!userRole) {
-        throw new Error('普通用户角色未找到，请先运行数据库种子');
-      }
-
-      // 创建新用户
-      user = await this.prisma.user.create({
-        data: {
-          wxOpenId: openid,
-          phone,
-          wxNickname: input.userInfo?.nickName,
-          wxAvatarUrl: input.userInfo?.avatarUrl,
-          username: `wx_${openid.substring(0, 8)}`,
-          email: `wx_${openid.substring(0, 8)}@temp.local`, // 临时邮箱
-          passwordHash: '', // 微信登录不需要密码
-          isActive: true,
-          roles: {
-            create: {
-              roleId: userRole.id,
-            },
-          },
-        },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          department: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-            },
-          },
-        },
-      });
-    } else {
-      // 更新现有用户信息
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          phone: phone || user.phone,
-          wxNickname: input.userInfo?.nickName || user.wxNickname,
-          wxAvatarUrl: input.userInfo?.avatarUrl || user.wxAvatarUrl,
-          lastLoginAt: new Date(),
-        },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  permissions: {
-                    include: {
-                      permission: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          department: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-            },
-          },
-        },
-      });
-    }
-
-    // 5️⃣ 生成 JWT token
-    const { accessToken, refreshToken } = await this.generateTokens(user as any);
-
-    // 6️⃣ 返回用户信息
-    const { passwordHash: _, ...sanitizedUser } = user;
-    const permissions = sanitizedUser.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
-        `${rp.permission.resource}:${rp.permission.action}`,
-      ),
-    ) || [];
-
-    return {
-      user: {
-        ...sanitizedUser,
-        permissions,
-      },
-      accessToken,
-      refreshToken,
-    };
-  }
-
-  /**
-   * 📱 获取微信 access_token（用于获取手机号等接口）
-   * 带缓存机制，避免频繁请求导致 token 冲突
-   */
-  private async getWxAccessToken(): Promise<string> {
-    const wxAppId = process.env.WX_APP_ID;
-    const wxAppSecret = process.env.WX_APP_SECRET;
-
-    if (!wxAppId || !wxAppSecret) {
-      throw new Error('微信配置未设置，请在环境变量中配置 WX_APP_ID 和 WX_APP_SECRET');
-    }
-
-    // 检查缓存是否有效（提前 5 分钟过期以确保安全）
-    const now = new Date();
-    const safeMargin = 5 * 60 * 1000; // 5 分钟
-
-    if (
-      this.wxAccessTokenCache &&
-      this.wxAccessTokenCache.expiresAt > new Date(now.getTime() + safeMargin)
-    ) {
-      console.log('[AuthService] 使用缓存的微信 access_token');
-      return this.wxAccessTokenCache.token;
-    }
-
-    // 获取新的 access_token
-    console.log('[AuthService] 获取新的微信 access_token');
-    try {
-      const response = await axios.get(
-        `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${wxAppId}&secret=${wxAppSecret}`,
-      );
-
-      if (response.data.errcode) {
-        throw new Error(`获取微信 access_token 失败: ${response.data.errmsg}`);
-      }
-
-      const accessToken = response.data.access_token;
-      const expiresIn = response.data.expires_in || 7200; // 默认 2 小时
-
-      // 缓存 access_token
-      this.wxAccessTokenCache = {
-        token: accessToken,
-        expiresAt: new Date(now.getTime() + expiresIn * 1000),
-      };
-
-      console.log('[AuthService] 微信 access_token 已缓存，过期时间:', this.wxAccessTokenCache.expiresAt);
-
-      return accessToken;
-    } catch (error) {
-      Logger.error('获取微信 access_token 失败', error);
-      throw new Error('获取微信 access_token 失败');
-    }
+    return { accessToken, refreshToken };
   }
 }

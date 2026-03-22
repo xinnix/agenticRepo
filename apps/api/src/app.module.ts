@@ -8,7 +8,6 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./modules/auth/module";
 import { TodoModule } from "./modules/todo/module";
 import { UserModule } from "./modules/user/module";
-import { RoleModule } from "./modules/role/module";
 
 // 全局过滤器/拦截器
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
@@ -19,7 +18,7 @@ import { TransformInterceptor } from "./core/interceptors/transform.interceptor"
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env.local", ".env"],
+      envFilePath: ["../../.env.local", "../../.env"],
     }),
     // 数据库模块（全局，必须在最前）
     PrismaModule,
@@ -27,7 +26,6 @@ import { TransformInterceptor } from "./core/interceptors/transform.interceptor"
     AuthModule,
     TodoModule,
     UserModule,
-    RoleModule,
   ],
   providers: [
     Reflector,

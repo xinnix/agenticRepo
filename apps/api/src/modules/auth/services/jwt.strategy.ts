@@ -32,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     console.log('[JwtStrategy] validate called');
     console.log('[JwtStrategy] payload:', JSON.stringify(payload));
     console.log('[JwtStrategy] payload.sub:', payload?.sub);
+    console.log('[JwtStrategy] payload.type:', payload?.type);
     console.log('[JwtStrategy] this.prisma:', !!this.prisma);
     console.log('[JwtStrategy] ================================');
 
@@ -39,47 +40,72 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new Error('Invalid token payload');
     }
 
-    // 从数据库获取用户信息
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: {
-                    permission: true,
+    const userType = payload.type || 'admin'; // 默认为 admin，兼容旧 token
+
+    if (userType === 'user') {
+      // 小程序用户：从 User 表查找
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new Error('用户不存在');
+      }
+
+      if (!user.isActive) {
+        throw new Error('用户已被禁用');
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        type: 'user',
+      };
+    } else {
+      // 管理端用户：从 Admin 表查找
+      const admin = await this.prisma.admin.findUnique({
+        where: { id: payload.sub },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!user) {
-      throw new Error('用户不存在');
+      if (!admin) {
+        throw new Error('管理员不存在');
+      }
+
+      if (!admin.isActive) {
+        throw new Error('管理员已被禁用');
+      }
+
+      // 扁平化权限
+      const permissions = admin.roles?.flatMap((ar: any) =>
+        ar.role.permissions?.map((rp: any) =>
+          `${rp.permission.resource}:${rp.permission.action}`,
+        ),
+      ) || [];
+
+      return {
+        id: admin.id,
+        email: admin.email,
+        username: admin.username,
+        roles: admin.roles?.map((ar: any) => ar.role),
+        permissions,
+        type: 'admin',
+      };
     }
-
-    if (!user.isActive) {
-      throw new Error('用户已被禁用');
-    }
-
-    // 扁平化权限
-    const permissions = user.roles?.flatMap((ur: any) =>
-      ur.role.permissions?.map((rp: any) =>
-        `${rp.permission.resource}:${rp.permission.action}`,
-      ),
-    ) || [];
-
-    return {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      roles: user.roles?.map((ur: any) => ur.role),
-      permissions,
-    };
   }
 }

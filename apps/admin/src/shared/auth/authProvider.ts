@@ -8,7 +8,7 @@ export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
     try {
       // Use tRPC mutation - returns data directly
-      const result = await (trpcClient as any).auth.login.mutate({
+      const result = await (trpcClient as any).auth.adminLogin.mutate({
         email,
         password,
       });

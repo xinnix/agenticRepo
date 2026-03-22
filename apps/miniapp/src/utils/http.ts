@@ -15,9 +15,9 @@ interface RequestConfig {
 }
 
 interface Response<T = unknown> {
+  success: boolean
   data: T
-  code: number
-  message: string
+  message?: string
 }
 
 class HttpClient {
@@ -52,11 +52,43 @@ class HttpClient {
         },
         timeout: timeout || this.config.timeout,
         success: (res) => {
+          // ✅ 处理 401 未授权错误
+          if (res.statusCode === 401) {
+            // 1. 清除本地存储
+            uni.removeStorageSync('token');
+            uni.removeStorageSync('refreshToken');
+            uni.removeStorageSync('userInfo');
+
+            // 2. 提示用户
+            uni.showModal({
+              title: '登录已过期',
+              content: '请重新登录',
+              showCancel: false,
+              success: () => {
+                // 3. 跳转到登录页
+                uni.reLaunch({ url: '/pages/login' });
+              },
+            });
+
+            reject(res.data);
+            return;
+          }
+
           if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(res.data as Response<T>)
+            const response = res.data as Response<T>
+            if (response.success !== false) {
+              resolve(response)
+            } else {
+              uni.showToast({
+                title: response.message || '请求失败',
+                icon: 'none',
+              })
+              reject(response)
+            }
           } else {
+            const response = res.data as Response
             uni.showToast({
-              title: (res.data as Response).message || '请求失败',
+              title: response.message || '请求失败',
               icon: 'none',
             })
             reject(res.data)

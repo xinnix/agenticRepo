@@ -1,136 +1,51 @@
-import 'dotenv/config';
-import { PrismaClient } from '@opencode/database';
-import type { Permission } from '@opencode/database';
-import * as bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import * as bcrypt from 'bcryptjs';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// 设置数据库 URL
+const DATABASE_URL = 'postgresql://xinnix:x12345678@127.0.0.1/agenticrepo';
+
+// 延迟导入以使用正确的 DATABASE_URL
+process.env.DATABASE_URL = DATABASE_URL;
+
+import { PrismaClient } from '@opencode/database';
+
+const pool = new Pool({ connectionString: DATABASE_URL });
 const adapter = new PrismaPg(pool);
-
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Starting seed...');
 
   // ============================================
-  // 0. Clean up old role data
-  // ============================================
-  console.log('Cleaning up old role data...');
-
-  // Delete old dept_admin role if exists (renamed to department_admin)
-  await prisma.role.deleteMany({
-    where: { slug: 'dept_admin' },
-  }).catch(() => {});
-
-  // Delete old role permissions and user roles for consistency
-  await prisma.rolePermission.deleteMany({});
-  await prisma.userRole.deleteMany({});
-
-  console.log('✅ Cleaned up old data');
-
-  // ============================================
-  // 1. Create Departments
-  // ============================================
-  console.log('Creating departments...');
-
-  const techDept = await prisma.department.upsert({
-    where: { code: 'TECH' },
-    update: {},
-    create: {
-      name: '技术部',
-      code: 'TECH',
-    },
-  });
-
-  const adminDept = await prisma.department.upsert({
-    where: { code: 'ADMIN' },
-    update: {},
-    create: {
-      name: '行政部',
-      code: 'ADMIN',
-    },
-  });
-
-  const serviceDept = await prisma.department.upsert({
-    where: { code: 'SERVICE' },
-    update: {},
-    create: {
-      name: '客服部',
-      code: 'SERVICE',
-    },
-  });
-
-  console.log('✅ Created 3 departments');
-
-  // ============================================
-  // 2. Create Permissions
+  // 1. Create Permissions (仅用于 Admin)
   // ============================================
   console.log('Creating permissions...');
 
   const permissions = await Promise.all([
-    // Ticket permissions
+    // Todo permissions
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'create' } },
+      where: { resource_action: { resource: 'todo', action: 'create' } },
       update: {},
-      create: { resource: 'ticket', action: 'create', description: '创建工单' },
+      create: { resource: 'todo', action: 'create', description: '创建待办' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'read' } },
+      where: { resource_action: { resource: 'todo', action: 'read' } },
       update: {},
-      create: { resource: 'ticket', action: 'read', description: '查看工单' },
+      create: { resource: 'todo', action: 'read', description: '查看待办' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'read_all' } },
+      where: { resource_action: { resource: 'todo', action: 'update' } },
       update: {},
-      create: { resource: 'ticket', action: 'read_all', description: '查看所有工单' },
+      create: { resource: 'todo', action: 'update', description: '更新待办' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'read_department' } },
+      where: { resource_action: { resource: 'todo', action: 'delete' } },
       update: {},
-      create: { resource: 'ticket', action: 'read_department', description: '查看本部门工单' },
+      create: { resource: 'todo', action: 'delete', description: '删除待办' },
     }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'update' } },
-      update: {},
-      create: { resource: 'ticket', action: 'update', description: '更新工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'delete' } },
-      update: {},
-      create: { resource: 'ticket', action: 'delete', description: '删除工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'assign' } },
-      update: {},
-      create: { resource: 'ticket', action: 'assign', description: '指派工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'accept' } },
-      update: {},
-      create: { resource: 'ticket', action: 'accept', description: '接单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'process' } },
-      update: {},
-      create: { resource: 'ticket', action: 'process', description: '处理工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'complete' } },
-      update: {},
-      create: { resource: 'ticket', action: 'complete', description: '完成工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'close' } },
-      update: {},
-      create: { resource: 'ticket', action: 'close', description: '关闭工单' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'ticket', action: 'rate' } },
-      update: {},
-      create: { resource: 'ticket', action: 'rate', description: '评价工单' },
-    }),
-    // User permissions
+
+    // User permissions (管理小程序用户)
     prisma.permission.upsert({
       where: { resource_action: { resource: 'user', action: 'create' } },
       update: {},
@@ -142,11 +57,6 @@ async function main() {
       create: { resource: 'user', action: 'read', description: '查看用户' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'user', action: 'read_department' } },
-      update: {},
-      create: { resource: 'user', action: 'read_department', description: '查看本部门用户' },
-    }),
-    prisma.permission.upsert({
       where: { resource_action: { resource: 'user', action: 'update' } },
       update: {},
       create: { resource: 'user', action: 'update', description: '更新用户' },
@@ -156,98 +66,56 @@ async function main() {
       update: {},
       create: { resource: 'user', action: 'delete', description: '删除用户' },
     }),
+
+    // Admin permissions (管理员管理)
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'user', action: 'manage_roles' } },
+      where: { resource_action: { resource: 'admin', action: 'create' } },
       update: {},
-      create: { resource: 'user', action: 'manage_roles', description: '管理角色' },
-    }),
-    // Department permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'department', action: 'read' } },
-      update: {},
-      create: { resource: 'department', action: 'read', description: '查看部门' },
+      create: { resource: 'admin', action: 'create', description: '创建管理员' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'department', action: 'read_all' } },
+      where: { resource_action: { resource: 'admin', action: 'read' } },
       update: {},
-      create: { resource: 'department', action: 'read_all', description: '查看所有部门' },
+      create: { resource: 'admin', action: 'read', description: '查看管理员' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'department', action: 'update' } },
+      where: { resource_action: { resource: 'admin', action: 'update' } },
       update: {},
-      create: { resource: 'department', action: 'update', description: '更新部门' },
-    }),
-    // Handler permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'handler', action: 'read' } },
-      update: {},
-      create: { resource: 'handler', action: 'read', description: '查看办事员' },
+      create: { resource: 'admin', action: 'update', description: '更新管理员' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'handler', action: 'read_department' } },
+      where: { resource_action: { resource: 'admin', action: 'delete' } },
       update: {},
-      create: { resource: 'handler', action: 'read_department', description: '查看本部门办事员' },
+      create: { resource: 'admin', action: 'delete', description: '删除管理员' },
+    }),
+
+    // Role permissions
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'role', action: 'create' } },
+      update: {},
+      create: { resource: 'role', action: 'create', description: '创建角色' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'handler', action: 'assign' } },
+      where: { resource_action: { resource: 'role', action: 'read' } },
       update: {},
-      create: { resource: 'handler', action: 'assign', description: '指派工单给办事员' },
-    }),
-    // Category permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'category', action: 'read' } },
-      update: {},
-      create: { resource: 'category', action: 'read', description: '查看分类' },
+      create: { resource: 'role', action: 'read', description: '查看角色' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'category', action: 'manage' } },
+      where: { resource_action: { resource: 'role', action: 'update' } },
       update: {},
-      create: { resource: 'category', action: 'manage', description: '管理分类' },
-    }),
-    // Preset Area permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'preset_area', action: 'read' } },
-      update: {},
-      create: { resource: 'preset_area', action: 'read', description: '查看预设区域' },
+      create: { resource: 'role', action: 'update', description: '更新角色' },
     }),
     prisma.permission.upsert({
-      where: { resource_action: { resource: 'preset_area', action: 'manage' } },
+      where: { resource_action: { resource: 'role', action: 'delete' } },
       update: {},
-      create: { resource: 'preset_area', action: 'manage', description: '管理预设区域' },
-    }),
-    // Statistics permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'statistics', action: 'view' } },
-      update: {},
-      create: { resource: 'statistics', action: 'view', description: '查看统计' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'statistics', action: 'view_department' } },
-      update: {},
-      create: { resource: 'statistics', action: 'view_department', description: '查看本部门统计' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'statistics', action: 'export' } },
-      update: {},
-      create: { resource: 'statistics', action: 'export', description: '导出统计' },
-    }),
-    // Attachment permissions
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'attachment', action: 'upload' } },
-      update: {},
-      create: { resource: 'attachment', action: 'upload', description: '上传附件' },
-    }),
-    prisma.permission.upsert({
-      where: { resource_action: { resource: 'attachment', action: 'delete' } },
-      update: {},
-      create: { resource: 'attachment', action: 'delete', description: '删除附件' },
+      create: { resource: 'role', action: 'delete', description: '删除角色' },
     }),
   ]);
 
   console.log(`✅ Created ${permissions.length} permissions`);
 
   // ============================================
-  // 3. Create Roles
+  // 2. Create Roles (仅用于 Admin)
   // ============================================
   console.log('Creating roles...');
 
@@ -257,74 +125,44 @@ async function main() {
     create: {
       name: '超级管理员',
       slug: 'super_admin',
+      description: '系统超级管理员，拥有所有权限',
       level: 0,
       isSystem: true,
-      description: '拥有所有权限的超级管理员',
     },
   });
 
   const adminRole = await prisma.role.upsert({
-    where: { slug: 'department_admin' },
+    where: { slug: 'admin' },
     update: {},
     create: {
       name: '管理员',
-      slug: 'department_admin',
-      level: 10,
-      isSystem: true,
-      description: '管理员，可管理部门工单和用户',
-    },
-  });
-
-  const handlerRole = await prisma.role.upsert({
-    where: { slug: 'handler' },
-    update: {},
-    create: {
-      name: '处理员',
-      slug: 'handler',
-      level: 50,
-      isSystem: true,
-      description: '工单处理员',
-    },
-  });
-
-  const userRole = await prisma.role.upsert({
-    where: { slug: 'user' },
-    update: {},
-    create: {
-      name: '普通用户',
-      slug: 'user',
+      slug: 'admin',
+      description: '系统管理员',
       level: 100,
       isSystem: true,
-      description: '普通用户，可创建和查看自己的工单',
     },
   });
 
-  console.log('✅ Created 4 roles');
-
-  // ============================================
-  // 3.5. Clean up any extra roles
-  // ============================================
-  console.log('Cleaning up extra roles...');
-
-  const validRoleSlugs = ['super_admin', 'department_admin', 'handler', 'user'];
-  const deletedRoles = await prisma.role.deleteMany({
-    where: {
-      slug: {
-        notIn: validRoleSlugs,
-      },
+  const viewerRole = await prisma.role.upsert({
+    where: { slug: 'viewer' },
+    update: {},
+    create: {
+      name: '访客',
+      slug: 'viewer',
+      description: '只读权限管理员',
+      level: 200,
+      isSystem: true,
     },
   });
 
-  if (deletedRoles.count > 0) {
-    console.log(`✅ Deleted ${deletedRoles.count} extra roles`);
-  }
+  console.log('✅ Created 3 roles');
 
   // ============================================
-  // 4. Assign Permissions to Roles
+  // 3. Assign Permissions to Roles
   // ============================================
   console.log('Assigning permissions to roles...');
 
-  // Super Admin: All permissions
+  // Super admin gets all permissions
   for (const permission of permissions) {
     await prisma.rolePermission.upsert({
       where: {
@@ -341,17 +179,11 @@ async function main() {
     });
   }
 
-  // Department Admin: 本部门管理权限
-  const deptAdminPermissions = permissions.filter((p: Permission) => {
-    // 不能删除用户
-    if (p.resource === 'user' && p.action === 'delete') return false;
-    // 不能查看所有部门
-    if (p.resource === 'department' && p.action === 'read_all') return false;
-    // 不能管理全局系统设置
-    if (p.resource === 'settings') return false;
-    return true;
-  });
-  for (const permission of deptAdminPermissions) {
+  // Admin gets most permissions
+  const adminPermissions = permissions.filter(
+    (p) => !p.action.includes('delete') || p.resource === 'todo'
+  );
+  for (const permission of adminPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
@@ -367,67 +199,19 @@ async function main() {
     });
   }
 
-  // Handler: 处理工单权限
-  const handlerPermissions = permissions.filter((p: Permission) => {
-    // 所有工单相关操作（除了删除）
-    if (p.resource === 'ticket' && p.action !== 'delete') return true;
-    // 查看统计
-    if (p.resource === 'statistics' && p.action === 'view') return true;
-    // 查看部门统计
-    if (p.resource === 'statistics' && p.action === 'view_department') return true;
-    // 查看分类
-    if (p.resource === 'category' && p.action === 'read') return true;
-    // 查看预设区域
-    if (p.resource === 'preset_area' && p.action === 'read') return true;
-    // 上传附件
-    if (p.resource === 'attachment' && p.action === 'upload') return true;
-    return false;
-  });
-  for (const permission of handlerPermissions) {
+  // Viewer gets only read permissions
+  const viewerPermissions = permissions.filter((p) => p.action === 'read');
+  for (const permission of viewerPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: handlerRole.id,
+          roleId: viewerRole.id,
           permissionId: permission.id,
         },
       },
       update: {},
       create: {
-        roleId: handlerRole.id,
-        permissionId: permission.id,
-      },
-    });
-  }
-
-  // User: 基本权限 - 创建工单和查看自己的工单
-  const userPermissions = permissions.filter((p: Permission) => {
-    // 创建工单
-    if (p.resource === 'ticket' && p.action === 'create') return true;
-    // 查看工单
-    if (p.resource === 'ticket' && p.action === 'read') return true;
-    // 评价工单
-    if (p.resource === 'ticket' && p.action === 'rate') return true;
-    // 上传附件
-    if (p.resource === 'attachment' && p.action === 'upload') return true;
-    // 查看分类
-    if (p.resource === 'category' && p.action === 'read') return true;
-    // 查看预设区域
-    if (p.resource === 'preset_area' && p.action === 'read') return true;
-    // 查看部门
-    if (p.resource === 'department' && p.action === 'read') return true;
-    return false;
-  });
-  for (const permission of userPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: userRole.id,
-          permissionId: permission.id,
-        },
-      },
-      update: {},
-      create: {
-        roleId: userRole.id,
+        roleId: viewerRole.id,
         permissionId: permission.id,
       },
     });
@@ -436,344 +220,137 @@ async function main() {
   console.log('✅ Assigned permissions to roles');
 
   // ============================================
-  // 5. Create Categories
+  // 4. Create Demo Admin Users (管理端用户)
   // ============================================
-  console.log('Creating categories...');
+  console.log('Creating demo admin users...');
 
-  const techCategory = await prisma.category.upsert({
-    where: { slug: 'tech-issue' },
+  const passwordHash = await bcrypt.hash('password123', 10);
+
+  const superAdmin = await prisma.admin.upsert({
+    where: { email: 'superadmin@example.com' },
     update: {},
     create: {
-      name: '技术问题',
-      slug: 'tech-issue',
-      description: '软件、硬件等技术相关问题',
-      status: 'ACTIVE',
-      level: 1,
-      sortOrder: 1,
+      username: 'superadmin',
+      email: 'superadmin@example.com',
+      passwordHash,
+      firstName: 'Super',
+      lastName: 'Admin',
+      roles: {
+        create: {
+          roleId: superAdminRole.id,
+        },
+      },
     },
   });
 
-  const facilityCategory = await prisma.category.upsert({
-    where: { slug: 'facility' },
-    update: {},
-    create: {
-      name: '设施问题',
-      slug: 'facility',
-      description: '办公设施、环境等问题',
-      status: 'ACTIVE',
-      level: 1,
-      sortOrder: 2,
-    },
-  });
-
-  const adminCategory = await prisma.category.upsert({
-    where: { slug: 'admin-issue' },
-    update: {},
-    create: {
-      name: '行政事务',
-      slug: 'admin-issue',
-      description: '人事、财务等行政事务',
-      status: 'ACTIVE',
-      level: 1,
-      sortOrder: 3,
-    },
-  });
-
-  console.log('✅ Created 3 categories');
-
-  // ============================================
-  // 6. Create Admin User
-  // ============================================
-  console.log('Creating admin user...');
-
-  const passwordHash = await bcrypt.hash('admin123', 10);
-
-  const adminUser = await prisma.user.upsert({
+  const admin = await prisma.admin.upsert({
     where: { email: 'admin@example.com' },
-    update: { passwordHash },
+    update: {},
     create: {
       username: 'admin',
       email: 'admin@example.com',
       passwordHash,
       firstName: 'Admin',
       lastName: 'User',
-      isActive: true,
-      departmentId: adminDept.id,
-      position: '系统管理员',
+      roles: {
+        create: {
+          roleId: adminRole.id,
+        },
+      },
     },
   });
 
-  // Assign super_admin role to admin user
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: adminUser.id,
-        roleId: superAdminRole.id,
-      },
-    },
+  const viewer = await prisma.admin.upsert({
+    where: { email: 'viewer@example.com' },
     update: {},
     create: {
-      userId: adminUser.id,
-      roleId: superAdminRole.id,
+      username: 'viewer',
+      email: 'viewer@example.com',
+      passwordHash,
+      firstName: 'Viewer',
+      lastName: 'Admin',
+      roles: {
+        create: {
+          roleId: viewerRole.id,
+        },
+      },
     },
   });
 
-  console.log('✅ Created admin user (admin@example.com / admin123)');
+  console.log('✅ Created 3 demo admin users');
 
   // ============================================
-  // 7. Create Test Users
+  // 5. Create Demo Miniapp Users (小程序用户)
   // ============================================
-  console.log('Creating test users...');
+  console.log('Creating demo miniapp users...');
 
-  const testUsers = [
-    {
-      username: 'department_admin',
-      email: 'department_admin@example.com',
-      password: 'admin123',
-      firstName: '张',
-      lastName: '管理',
-      position: '技术部经理',
-      department: techDept,
-      role: adminRole,
+  const miniappUser = await prisma.user.upsert({
+    where: { email: 'user@example.com' },
+    update: {},
+    create: {
+      username: 'user',
+      email: 'user@example.com',
+      passwordHash,
+      nickname: '测试用户',
+      phone: '13800138000',
     },
-    {
-      username: 'handler1',
-      email: 'handler1@example.com',
-      password: 'test123',
-      firstName: '李',
-      lastName: '处理',
-      position: '技术支持',
-      department: techDept,
-      role: handlerRole,
-    },
-    {
-      username: 'handler2',
-      email: 'handler2@example.com',
-      password: 'test123',
-      firstName: '王',
-      lastName: '工单',
-      position: '客服专员',
-      department: serviceDept,
-      role: handlerRole,
-    },
-    {
-      username: 'user1',
-      email: 'user1@example.com',
-      password: 'test123',
-      firstName: '赵',
-      lastName: '普通',
-      position: '普通员工',
-      department: adminDept,
-      role: userRole,
-    },
-    {
+  });
+
+  const miniappUser2 = await prisma.user.upsert({
+    where: { email: 'user2@example.com' },
+    update: {},
+    create: {
       username: 'user2',
       email: 'user2@example.com',
-      password: 'test123',
-      firstName: '陈',
-      lastName: '用户',
-      position: '普通员工',
-      department: adminDept,
-      role: userRole,
+      passwordHash,
+      nickname: '测试用户2',
     },
-  ];
+  });
 
-  const createdUsers: any[] = [adminUser];
-
-  for (const testUser of testUsers) {
-    const passwordHash = await bcrypt.hash(testUser.password, 10);
-
-    const user = await prisma.user.upsert({
-      where: { email: testUser.email },
-      update: { passwordHash },
-      create: {
-        username: testUser.username,
-        email: testUser.email,
-        passwordHash,
-        firstName: testUser.firstName,
-        lastName: testUser.lastName,
-        isActive: true,
-        departmentId: testUser.department.id,
-        position: testUser.position,
-      },
-    });
-
-    await prisma.userRole.upsert({
-      where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: testUser.role.id,
-        },
-      },
-      update: {},
-      create: {
-        userId: user.id,
-        roleId: testUser.role.id,
-      },
-    });
-
-    createdUsers.push(user);
-  }
-
-  console.log('✅ Created test users');
+  console.log('✅ Created 2 demo miniapp users');
 
   // ============================================
-  // 8. Create Mock Todos
+  // 6. Create Demo Todos (关联到小程序用户)
   // ============================================
-  console.log('Creating mock todos...');
+  console.log('Creating demo todos...');
 
-  const todoTitles = [
-    '完成项目文档',
-    '修复登录bug',
-    '优化数据库查询',
-    '添加用户权限管理',
-    '更新API文档',
-    '编写单元测试',
-    '代码审查',
-    '部署到生产环境',
-    '团队周会',
-    '学习新技术',
-  ];
-
-  for (const title of todoTitles) {
-    await prisma.todo.upsert({
-      where: { id: `${title}-todo` },
-      update: {},
-      create: {
-        id: `${title}-todo`,
-        title,
-        description: `这是关于"${title}"的详细描述`,
-        priority: Math.floor(Math.random() * 3) + 1,
-        isCompleted: Math.random() > 0.7,
-        createdById: adminUser.id,
-        updatedById: adminUser.id,
+  await prisma.todo.createMany({
+    data: [
+      {
+        title: '学习 NestJS',
+        description: '完成 NestJS 官方教程',
+        priority: 1,
+        userId: miniappUser.id,
       },
-    });
-  }
-
-  console.log('✅ Created mock todos');
-
-  // ============================================
-  // 9. Create Mock Tickets
-  // ============================================
-  console.log('Creating mock tickets...');
-
-  const ticketData = [
-    {
-      title: '电脑无法开机',
-      description: '我的办公电脑按电源键后没有任何反应，电源指示灯也不亮',
-      category: techCategory,
-      priority: 'URGENT' as const,
-      status: 'PROCESSING' as const,
-      createdBy: createdUsers[3], // user1
-      assignedTo: createdUsers[1], // handler1
-    },
-    {
-      title: '会议室投影仪故障',
-      description: 'A会议室的投影仪无法连接电脑，显示无信号',
-      category: techCategory,
-      priority: 'NORMAL' as const,
-      status: 'WAIT_ASSIGN' as const,
-      createdBy: createdUsers[4], // user2
-      assignedTo: null,
-    },
-    {
-      title: '申请办公用品',
-      description: '需要申请A4纸2箱、签字笔10支',
-      category: adminCategory,
-      priority: 'NORMAL' as const,
-      status: 'COMPLETED' as const,
-      createdBy: createdUsers[3], // user1
-      assignedTo: createdUsers[2], // handler2
-    },
-    {
-      title: '空调温度调节问题',
-      description: '办公区空调温度过低，希望调节到26度',
-      category: facilityCategory,
-      priority: 'NORMAL' as const,
-      status: 'CLOSED' as const,
-      createdBy: createdUsers[4], // user2
-      assignedTo: createdUsers[2], // handler2
-    },
-    {
-      title: '网络连接不稳定',
-      description: '下午3点左右网络经常断连，影响工作',
-      category: techCategory,
-      priority: 'URGENT' as const,
-      status: 'WAIT_ACCEPT' as const,
-      createdBy: createdUsers[3], // user1
-      assignedTo: createdUsers[1], // handler1
-    },
-  ];
-
-  for (const ticket of ticketData) {
-    // Generate ticket number
-    const ticketNumber = `TK${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 1000)}`;
-
-    // Calculate deadline
-    const hours = ticket.priority === 'URGENT' ? 4 : 24;
-    const deadlineAt = new Date();
-    deadlineAt.setHours(deadlineAt.getHours() + hours);
-
-    const created = await prisma.ticket.upsert({
-      where: { ticketNumber },
-      update: {},
-      create: {
-        ticketNumber,
-        title: ticket.title,
-        description: ticket.description,
-        status: ticket.status,
-        priority: ticket.priority,
-        categoryId: ticket.category.id,
-        createdById: ticket.createdBy.id,
-        assignedId: ticket.assignedTo?.id,
-        deadlineAt,
-        completedAt: ticket.status === 'COMPLETED' || ticket.status === 'CLOSED' ? new Date() : null,
-        closedAt: ticket.status === 'CLOSED' ? new Date() : null,
+      {
+        title: '学习 tRPC',
+        description: '理解 tRPC 的基本概念和用法',
+        priority: 2,
+        userId: miniappUser.id,
       },
-    });
+      {
+        title: '学习 Prisma',
+        description: '掌握 Prisma ORM 的基本操作',
+        priority: 3,
+        isCompleted: true,
+        userId: miniappUser.id,
+      },
+    ],
+    skipDuplicates: true,
+  });
 
-    // Add some comments
-    if (ticket.status !== 'WAIT_ASSIGN') {
-      await prisma.comment.create({
-        data: {
-          content: '工单已创建，正在处理中',
-          ticketId: created.id,
-          userId: ticket.createdBy.id,
-          commentType: 'USER',
-        },
-      });
-    }
-
-    // Add status history
-    if (ticket.status !== 'WAIT_ASSIGN') {
-      await prisma.statusHistory.create({
-        data: {
-          ticketId: created.id,
-          fromStatus: 'WAIT_ASSIGN',
-          toStatus: ticket.status,
-          userId: adminUser.id,
-          remark: '系统自动流转',
-        },
-      });
-    }
-  }
-
-  console.log('✅ Created mock tickets');
+  console.log('✅ Created 3 demo todos');
 
   console.log('🎉 Seed completed successfully!');
   console.log('');
-  console.log('Login credentials:');
-  console.log('  Super Admin:');
-  console.log('    - admin@example.com / admin123');
-  console.log('  Department Admin:');
-  console.log('    - department_admin@example.com / admin123');
-  console.log('  Handlers:');
-  console.log('    - handler1@example.com / test123');
-  console.log('    - handler2@example.com / test123');
-  console.log('  Users:');
-  console.log('    - user1@example.com / test123');
-  console.log('    - user2@example.com / test123');
+  console.log('📱 管理端测试账号 (Admin - password: password123):');
+  console.log('  - superadmin@example.com (Super Admin)');
+  console.log('  - admin@example.com (Admin)');
+  console.log('  - viewer@example.com (Viewer)');
+  console.log('');
+  console.log('📱 小程序测试账号 (User - password: password123):');
+  console.log('  - user@example.com (普通用户)');
+  console.log('  - user2@example.com (普通用户2)');
 }
 
 main()

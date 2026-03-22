@@ -65,6 +65,7 @@
     "eslint": "^9.32.0",
     "lint-staged": "^16.1.2",
     "miniprogram-api-typings": "^4.1.0",
+    "sass": "^1.98.0",
     "simple-git-hooks": "^2.13.0",
     "typescript": "~5.8.3",
     "unocss": "66.0.0",

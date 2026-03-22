@@ -6,7 +6,14 @@ import {
 } from "../../../trpc/trpc";
 import { z } from "zod";
 import * as bcrypt from "bcryptjs";
-import { UserSchema, UserListQuerySchema, AssignRoleSchema, BatchAssignRolesSchema, ResetPasswordSchema } from "@opencode/shared";
+import {
+  CreateUserSchema,
+  UpdateUserSchema,
+  UserListQuerySchema,
+  AssignRoleSchema,
+  BatchAssignRolesSchema,
+  ResetPasswordSchema
+} from "@opencode/shared";
 
 /**
  * User tRPC Router
@@ -17,8 +24,8 @@ import { UserSchema, UserListQuerySchema, AssignRoleSchema, BatchAssignRolesSche
 export const userRouter = createCrudRouterWithCustom(
   "User",
   {
-    create: UserSchema.createInput,
-    update: UserSchema.updateInput,
+    create: CreateUserSchema,
+    update: UpdateUserSchema,
   },
   (t) => ({
     // Custom getMany with search and filters
@@ -158,7 +165,7 @@ export const userRouter = createCrudRouterWithCustom(
     create: permissionProcedure("user", "create")
       .input(
         z.object({
-          data: UserSchema.createInput,
+          data: CreateUserSchema,
           include: z.any().optional(),
           select: z.any().optional(),
         })
@@ -221,7 +228,7 @@ export const userRouter = createCrudRouterWithCustom(
       .input(
         z.object({
           id: z.string(),
-          data: UserSchema.updateInput,
+          data: UpdateUserSchema,
           include: z.any().optional(),
           select: z.any().optional(),
         })

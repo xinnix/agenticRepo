@@ -70,7 +70,23 @@ export const LoginPage = () => {
               </Form.Item>
             </Form>
             <div className="login-footer">
-              <p>测试账号: admin@example.com / admin123</p>
+              <div style={{ marginTop: 16, padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: 12, color: '#666', fontSize: 14 }}>管理端测试账号 (密码: password123)</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                    <span style={{ fontWeight: 500 }}>超级管理员</span>
+                    <span style={{ color: '#1890ff' }}>superadmin@example.com</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                    <span style={{ fontWeight: 500 }}>管理员</span>
+                    <span style={{ color: '#1890ff' }}>admin@example.com</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                    <span style={{ fontWeight: 500 }}>访客</span>
+                    <span style={{ color: '#1890ff' }}>viewer@example.com</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         </div>

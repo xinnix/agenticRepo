@@ -1,5 +1,10 @@
-import { TodoSchema } from '@opencode/shared';
+import {
+  CreateTodoSchema,
+  UpdateTodoSchema,
+  TodoListQuerySchema
+} from '@opencode/shared';
 import { createCrudRouter } from '../../../trpc/trpc.helper';
+import { z } from 'zod';
 
 /**
  * Todo tRPC Router
@@ -13,10 +18,9 @@ import { createCrudRouter } from '../../../trpc/trpc.helper';
 export const todoRouter = createCrudRouter(
   'Todo',  // Prisma model name (capitalized)
   {
-    create: TodoSchema.createInput,
-    update: TodoSchema.updateInput,
-    getMany: TodoSchema.getManyInput,
-    getOne: TodoSchema.getOneInput,
+    create: CreateTodoSchema,
+    update: UpdateTodoSchema,
+    getMany: TodoListQuerySchema,
   },
   {
     // Require authentication for mutations

@@ -34,7 +34,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: '注册新用户' })
+  @ApiOperation({ summary: '注册小程序用户' })
   @ApiResponse({
     status: 201,
     description: '用户注册成功',
@@ -45,30 +45,13 @@ export class AuthController {
     const validatedData = RegisterSchema.parse(body);
 
     // 调用业务逻辑
-    return this.authService.register(validatedData);
-  }
-
-  @Public()
-  @Post('wx-login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '微信小程序登录' })
-  @ApiResponse({
-    status: 200,
-    description: '微信登录成功',
-  })
-  async wxLogin(@Body() body: {
-    code: string;
-    phoneCode?: string; // 手机号改为可选
-    userInfo?: { nickName: string; avatarUrl: string };
-  }) {
-    console.log('wxLogin called - authService:', !!this.authService);
-    return this.authService.wxLogin(body);
+    return this.authService.registerUser(validatedData);
   }
 
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '用户登录' })
+  @ApiOperation({ summary: '小程序用户登录' })
   @ApiResponse({
     status: 200,
     description: '登录成功',
@@ -76,7 +59,33 @@ export class AuthController {
   async login(@Body() body: typeof LoginSchema) {
     // ✅ 运行时验证
     const validatedData = LoginSchema.parse(body);
-    return this.authService.login(validatedData);
+    return this.authService.loginUser(validatedData);
+  }
+
+  @Public()
+  @Post('wechat/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '微信登录' })
+  @ApiResponse({
+    status: 200,
+    description: '微信登录成功',
+  })
+  async wechatLogin(@Body('code') code: string) {
+    return this.authService.loginWithWechat(code);
+  }
+
+  @Public()
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '管理端用户登录' })
+  @ApiResponse({
+    status: 200,
+    description: '登录成功',
+  })
+  async adminLogin(@Body() body: typeof LoginSchema) {
+    // ✅ 运行时验证
+    const validatedData = LoginSchema.parse(body);
+    return this.authService.loginAdmin(validatedData);
   }
 
   @Public()

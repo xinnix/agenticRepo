@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { TodoService } from '../services/todo.service';
 import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { CurrentUser } from '../../auth/decorators/decorators';
-import { TodoSchema } from '@opencode/shared';
+import { CreateTodoSchema, UpdateTodoSchema, TodoListQuerySchema } from '@opencode/shared';
 
 @ApiTags('todo')
 @Controller('todo')
@@ -29,11 +29,12 @@ export class TodoController {
     description: '创建成功',
   })
   async create(
-    @Body() body: typeof TodoSchema.createInput,
+    @Body() body: any,
     @CurrentUser() user: any,
   ) {
-    const data = TodoSchema.createInput.parse(body);
-    return this.todoService.create(data, { userId: user.id });
+    const data = CreateTodoSchema.parse(body);
+    // 将 userId 直接添加到数据中
+    return this.todoService.create({ ...data, userId: user.id });
   }
 
   @Get()
@@ -43,14 +44,17 @@ export class TodoController {
     description: '获取成功',
   })
   async findAll(
-    @Query() query: typeof TodoSchema.getManyInput,
+    @Query() query: any,
     @CurrentUser() user: any,
   ) {
-    const data = TodoSchema.getManyInput.parse(query);
+    const data = TodoListQuerySchema.parse(query);
+    const pageSize = data.pageSize || 10;
+    const page = data.page || 1;
+
     return this.todoService.list({
-      skip: data.page ? (data.page - 1) * data.limit : 0,
-      take: data.limit,
-      where: { createdById: user.id },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      where: { userId: user.id },
     });
   }
 
@@ -75,10 +79,10 @@ export class TodoController {
   })
   async update(
     @Param('id') id: string,
-    @Body() body: typeof TodoSchema.updateInput,
+    @Body() body: any,
     @CurrentUser() user: any,
   ) {
-    const data = TodoSchema.updateInput.parse(body);
+    const data = UpdateTodoSchema.parse(body);
     return this.todoService.update(id, data, { userId: user.id });
   }
 
