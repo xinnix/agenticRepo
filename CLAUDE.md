@@ -5,6 +5,7 @@
 **开箱即用的全栈管理系统脚手架**，基于 Agent-Centric 开发模式。
 
 ### 核心特性
+
 - ✅ 完整的 RBAC 权限系统（Admin 端）
 - ✅ 双用户认证体系（Admin + User）
 - ✅ 开箱即用的 CRUD 模板生成
@@ -13,6 +14,7 @@
 - ✅ Monorepo 统一管理
 
 ### 适用场景
+
 - 企业管理后台
 - SaaS 多租户系统
 - 小程序 + 管理后台组合
@@ -22,23 +24,25 @@
 
 ## 🛠 技术栈
 
-| 端 | 技术栈 |
-|---|---|
-| **Backend** | NestJS + tRPC + Prisma + PostgreSQL |
+| 端           | 技术栈                                       |
+| ------------ | -------------------------------------------- |
+| **Backend**  | NestJS + tRPC + Prisma + PostgreSQL          |
 | **Admin UI** | React 18 + Refine + Ant Design + tRPC Client |
-| **Miniapp** | uni-app + Vue 3 + TypeScript |
-| **Monorepo** | pnpm Workspace + Turborepo |
+| **Miniapp**  | uni-app + Vue 3 + TypeScript                 |
+| **Monorepo** | pnpm Workspace + Turborepo                   |
 
 ---
 
 ## 🏗 Monorepo 规范
 
 ### 依赖规则
+
 - `apps/*` 引用 `infra/*` 必须使用 `workspace:*` 协议
 - `infra/` 包严禁引用 `apps/` 内容
 - 通用工具优先在根目录或 `infra/shared` 统一管理
 
 ### 目录职责
+
 ```
 apps/
 ├── api/          # NestJS 后端，业务逻辑在 *.service.ts
@@ -54,6 +58,7 @@ infra/
 ## 💻 快速命令
 
 ### 基础操作
+
 ```bash
 pnpm install                    # 安装依赖
 pnpm dev                        # 启动全部服务（API + Admin + Miniapp）
@@ -61,6 +66,7 @@ pnpm build                      # 构建全部项目
 ```
 
 ### 单独启动
+
 ```bash
 pnpm --filter @opencode/api dev       # 后端
 pnpm --filter @opencode/admin dev     # Admin 前端
@@ -69,20 +75,14 @@ pnpm --filter @opencode/miniapp dev:mp-weixin  # 微信小程序
 ```
 
 ### 数据库操作
+
 ```bash
 pnpm --filter @opencode/database prisma generate   # 生成 Client
 pnpm --filter @opencode/database prisma migrate dev # 运行迁移
 pnpm --filter @opencode/database prisma db seed     # 执行 Seed
 ```
 
-### Skills（推荐使用）
-```bash
-/sync          # 同步工作区（Prisma + Shared）
-/db-migrate    # 数据库迁移 + Seed
-/build-all     # 构建整个 Monorepo
-/start-all     # 启动全部服务
-/start-mini    # 启动小程序开发服务
-```
+````
 
 ---
 
@@ -98,15 +98,17 @@ export class ProductService extends BaseService<Product> {
     super(prisma, "product");
   }
 }
-```
+````
 
 **命名规范：**
+
 - 文件：`feature-name.service.ts`（小写横杠）
 - TS 变量：`camelCase`
 - 数据库字段：`snake_case`
 - tRPC 路由：与 Prisma 模型名对齐
 
 **SSOT 原则：**
+
 - `schema.prisma` 是唯一的模型真理源
 - `infra/shared` 是唯一的验证真理源
 - 所有端共享 `@opencode/shared` 类型
@@ -114,16 +116,19 @@ export class ProductService extends BaseService<Product> {
 ### 2. 双用户认证体系
 
 **Admin 用户（管理后台）：**
+
 - 表：`admins`
 - 权限：RBAC 角色-权限系统
 - Token：`{ sub, email, type: 'admin' }`
 
 **User 用户（小程序）：**
+
 - 表：`users`
 - 登录：微信登录 / 邮箱注册
 - Token：`{ sub, email, type: 'user' }`
 
 **关键约束：**
+
 - ⚠️ JWT Strategy 自动识别用户类型
 - ⚠️ 小程序用户无权访问管理端路由
 - ⚠️ Token 必须包含 `type` 字段
@@ -146,22 +151,25 @@ export class ProductService extends BaseService<Product> {
 ## 📝 工作流程
 
 ### 开发前必读
+
 1. 阅读 `docs/product/vision.md` 了解产品愿景
 2. 阅读对应 `docs/prd/*.md` 了解需求
 3. 使用 `/genModule <name>` 生成模块骨架
 
 ### 开发后必做
+
 1. 更新 `docs/product/roadmap.md` 进度
-2. 更新 `docker-compose.prod.yml` 和 `.env.example`（如有新环境变量）
 
 ---
 
 ## 🤖 Agent Skills
 
 ### 模块生成
+
 - `/genModule <name>` - 生成完整 CRUD 模块（Schema → Service → Router → UI）
 
 ### 开发辅助
+
 - `/sync` - 同步工作区
 - `/db-migrate` - 数据库迁移
 - `/build-all` - 构建全部
@@ -169,6 +177,7 @@ export class ProductService extends BaseService<Product> {
 - `/start-mini` - 启动小程序
 
 ### 代码质量
+
 - `/simplify` - 简化代码，提升复用性
 - `/type-check` - TypeScript 类型检查
 
